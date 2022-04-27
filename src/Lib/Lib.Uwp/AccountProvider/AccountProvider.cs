@@ -277,12 +277,28 @@ namespace Richasy.Bili.Lib.Uwp
         }
 
         /// <inheritdoc/>
-        public Task<PgcFavoriteListResponse> GetFavoriteAnimeListAsync(int pageNumber)
-            => GetPgcFavoriteListInternalAsync(Account.AnimeFavorite, pageNumber);
+        public Task<PgcFavoriteListResponse> GetFavoriteAnimeListAsync(int pageNumber, int status)
+            => GetPgcFavoriteListInternalAsync(Account.AnimeFavorite, pageNumber, status);
 
         /// <inheritdoc/>
-        public Task<PgcFavoriteListResponse> GetFavoriteCinemaListAsync(int pageNumber)
-            => GetPgcFavoriteListInternalAsync(Account.CinemaFavorite, pageNumber);
+        public Task<PgcFavoriteListResponse> GetFavoriteCinemaListAsync(int pageNumber, int status)
+            => GetPgcFavoriteListInternalAsync(Account.CinemaFavorite, pageNumber, status);
+
+        /// <inheritdoc/>
+        public async Task<bool> UpdateFavoritePgcStatusAsync(int seasonId, int status)
+        {
+            var queryParameters = new Dictionary<string, string>
+            {
+                { Query.SeasonId, seasonId.ToString() },
+                { Query.Status, status.ToString() },
+                { Query.Device, "phone" },
+            };
+
+            var request = await _httpProvider.GetRequestMessageAsync(HttpMethod.Post, Account.UpdatePgcStatus, queryParameters, needToken: true);
+            var response = await _httpProvider.SendAsync(request);
+            var result = await _httpProvider.ParseAsync<ServerResponse>(response);
+            return result.Message == "success";
+        }
 
         /// <inheritdoc/>
         public async Task<ArticleFavoriteListResponse> GetFavortieArticleListAsync(int pageNumber)
@@ -413,6 +429,48 @@ namespace Richasy.Bili.Lib.Uwp
             var request = await _httpProvider.GetRequestMessageAsync(HttpMethod.Get, Account.Relation, queryParameters, Models.Enums.RequestClientType.IOS, true);
             var response = await _httpProvider.SendAsync(request);
             var result = await _httpProvider.ParseAsync<ServerResponse<UserRelationResponse>>(response);
+            return result.Data;
+        }
+
+        /// <inheritdoc/>
+        public async Task<SearchArchiveReply> SearchUserSpaceVideoAsync(int userId, string keyword, int pageNumber, int pageSize = 20)
+        {
+            var req = new SearchArchiveReq
+            {
+                Mid = userId,
+                Keyword = keyword,
+                Pn = pageNumber,
+                Ps = pageSize,
+            };
+
+            var request = await _httpProvider.GetRequestMessageAsync(Account.SpaceVideoSearch, req, false);
+            var response = await _httpProvider.SendAsync(request);
+            var data = await _httpProvider.ParseAsync(response, SearchArchiveReply.Parser);
+            return data;
+        }
+
+        /// <inheritdoc/>
+        public async Task<List<RelatedTag>> GetMyFollowingTagsAsync()
+        {
+            var request = await _httpProvider.GetRequestMessageAsync(HttpMethod.Get, Account.MyFollowingTags, null, Models.Enums.RequestClientType.IOS, true);
+            var response = await _httpProvider.SendAsync(request);
+            var result = await _httpProvider.ParseAsync<ServerResponse<List<RelatedTag>>>(response);
+            return result.Data;
+        }
+
+        /// <inheritdoc/>
+        public async Task<List<RelatedUser>> GetMyFollowingTagDetailAsync(int userId, int tagId, int page)
+        {
+            var queryParameters = new Dictionary<string, string>
+            {
+                { Query.TagId, tagId.ToString() },
+                { Query.PageNumber, page.ToString() },
+                { Query.MyId, userId.ToString() },
+            };
+
+            var request = await _httpProvider.GetRequestMessageAsync(HttpMethod.Get, Account.MyFollowingTagDetail, queryParameters, Models.Enums.RequestClientType.IOS, true);
+            var response = await _httpProvider.SendAsync(request);
+            var result = await _httpProvider.ParseAsync<ServerResponse<List<RelatedUser>>>(response);
             return result.Data;
         }
     }

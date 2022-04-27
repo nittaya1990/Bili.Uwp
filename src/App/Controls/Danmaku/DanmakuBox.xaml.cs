@@ -1,5 +1,6 @@
 ﻿// Copyright (c) Richasy. All rights reserved.
 
+using Richasy.Bili.ViewModels.Uwp;
 using Richasy.Bili.ViewModels.Uwp.Common;
 using Windows.UI.Xaml.Controls;
 
@@ -15,7 +16,7 @@ namespace Richasy.Bili.App.Controls
         /// </summary>
         public DanmakuBox()
         {
-            this.InitializeComponent();
+            InitializeComponent();
             ViewModel = DanmakuViewModel.Instance;
         }
 
@@ -35,6 +36,11 @@ namespace Richasy.Bili.App.Controls
                 if (result)
                 {
                     sender.Text = string.Empty;
+                    (PlayerViewModel.Instance.BiliPlayer.TransportControls as BiliPlayerTransportControls).CheckPlayPauseButtonFocus();
+                }
+                else
+                {
+                    sender.Focus(Windows.UI.Xaml.FocusState.Programmatic);
                 }
             }
         }
@@ -43,5 +49,8 @@ namespace Richasy.Bili.App.Controls
         {
             SendOptions.Initialize();
         }
+
+        private void OnDanmakuInputBoxGotFocus(object sender, Windows.UI.Xaml.RoutedEventArgs e)
+            => PlayerViewModel.Instance.IsFocusInputControl = true;
     }
 }

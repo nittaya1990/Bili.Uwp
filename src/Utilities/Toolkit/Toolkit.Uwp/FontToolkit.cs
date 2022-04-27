@@ -15,24 +15,21 @@ namespace Richasy.Bili.Toolkit.Uwp
         /// <inheritdoc/>
         public List<string> GetSystemFontList()
         {
-            var defaultLan = "en-us";
-            var fonts = CanvasFontSet.GetSystemFontSet();
-            var result = new List<string>();
-            foreach (var font in fonts.Fonts)
+            try
             {
-                font.FamilyNames.TryGetValue(defaultLan, out var fontName);
-                if (string.IsNullOrEmpty(fontName) && font.FamilyNames.Count > 0)
+                var localeList = new List<string>
                 {
-                    fontName = font.FamilyNames.First().Value;
-                }
-
-                if (!string.IsNullOrEmpty(fontName) && !result.Contains(fontName))
-                {
-                    result.Add(fontName);
-                }
+                    "zh-cn",
+                };
+                return CanvasTextFormat.GetSystemFontFamilies(localeList).OrderBy(x => x).ToList();
             }
-
-            return result;
+            catch (System.Exception)
+            {
+                return new List<string>
+                {
+                    "Segoe UI",
+                };
+            }
         }
     }
 }

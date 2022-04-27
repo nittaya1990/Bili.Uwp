@@ -26,7 +26,7 @@ namespace Richasy.Bili.App.Controls
         /// </summary>
         public DownloadOptionsPanel()
         {
-            this.InitializeComponent();
+            InitializeComponent();
             Initialize();
         }
 
@@ -94,7 +94,7 @@ namespace Richasy.Bili.App.Controls
             var item = DownloadTypeComboBox.SelectedItem as ComboBoxItem;
             switch (item.Tag)
             {
-                case "Full":
+                case "Any":
                     ViewModel.OnlyVideo = false;
                     ViewModel.OnlyAudio = false;
                     ViewModel.OnlySubtitle = false;
@@ -187,5 +187,8 @@ namespace Richasy.Bili.App.Controls
                     break;
             }
         }
+
+        private async void OnOpenFolderButtonClickAsync(object sender, RoutedEventArgs e)
+            => await ViewModel.SetDownloadFolderAsync();
     }
 }

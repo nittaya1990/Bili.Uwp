@@ -23,10 +23,15 @@ namespace Richasy.Bili.Controller.Uwp
         /// <param name="videoId">视频Id.</param>
         /// <returns><see cref="ViewReply"/>.</returns>
         public async Task<ViewReply> GetVideoDetailAsync(long videoId)
-        {
-            var result = await _playerProvider.GetVideoDetailAsync(videoId);
-            return result;
-        }
+            => await _playerProvider.GetVideoDetailAsync(videoId);
+
+        /// <summary>
+        /// 获取视频详情信息.
+        /// </summary>
+        /// <param name="videoId">视频 Bv Id.</param>
+        /// <returns><see cref="ViewReply"/>.</returns>
+        public async Task<ViewReply> GetVideoDetailAsync(string videoId)
+            => await _playerProvider.GetVideoDetailAsync(videoId);
 
         /// <summary>
         /// 获取在线观看人数.
@@ -55,12 +60,15 @@ namespace Richasy.Bili.Controller.Uwp
         /// <summary>
         /// 获取PGC播放信息.
         /// </summary>
-        /// <param name="partId">分集Id.</param>
+        /// <param name="partId">分集Cid.</param>
+        /// <param name="episodeId">分集Id.</param>
         /// <param name="seasonType">剧集类型.</param>
+        /// <param name="proxy">代理地址.</param>
+        /// <param name="area">地区.</param>
         /// <returns>播放信息.</returns>
-        public async Task<PlayerInformation> GetPgcPlayInformationAsync(int partId, int seasonType)
+        public async Task<PlayerInformation> GetPgcPlayInformationAsync(int partId, int episodeId, int seasonType, string proxy = "", string area = "")
         {
-            var result = await _playerProvider.GetDashAsync(partId, seasonType);
+            var result = await _playerProvider.GetDashAsync(partId, episodeId, seasonType, proxy, area);
             return result;
         }
 
@@ -111,7 +119,7 @@ namespace Richasy.Bili.Controller.Uwp
                     var isSuccess = false;
                     if (episodeId > 0)
                     {
-                        isSuccess = await _playerProvider.ReportProgressAsync(episodeId, seasonId, Convert.ToInt64(progress.TotalSeconds));
+                        isSuccess = await _playerProvider.ReportProgressAsync(videoId, partId, episodeId, seasonId, Convert.ToInt64(progress.TotalSeconds));
                     }
                     else if (videoId > 0)
                     {
@@ -230,5 +238,13 @@ namespace Richasy.Bili.Controller.Uwp
         /// <returns>选区响应.</returns>
         public Task<InteractionEdgeResponse> GetInteractionEdgeAsync(long videoId, string graphVersion, long edgeId)
             => _playerProvider.GetInteractionEdgeAsync(videoId, graphVersion, edgeId);
+
+        /// <summary>
+        /// 获取视频的参数.
+        /// </summary>
+        /// <param name="videoId">视频Id.</param>
+        /// <returns>视频参数.</returns>
+        public Task<VideoStatusInfo> GetVideoStatusAsync(long videoId)
+            => _playerProvider.GetVideoStatusAsync(videoId);
     }
 }

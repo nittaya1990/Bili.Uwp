@@ -11,26 +11,28 @@
     IsTabStop="False"
     mc:Ignorable="d">
 
-    <local:CardPanel
+    <Button
         Width="{x:Bind Width, Mode=OneWay}"
         Height="{x:Bind Height, Mode=OneWay}"
         Padding="0"
         Background="Transparent"
         BorderThickness="0"
-        Click="OnClick"
-        CornerRadius="32"
-        DisabledBackground="Transparent"
-        IsEnableHoverAnimation="False"
-        IsEnableShadow="False"
-        PointerOverBackground="Transparent"
-        PressedBackground="Transparent">
-        <muxc:PersonPicture
+        Click="OnClick">
+        <Button.Resources>
+            <SolidColorBrush x:Key="ButtonBackgroundPointerOver" Color="Transparent" />
+            <SolidColorBrush x:Key="ButtonBackgroundPressed" Color="Transparent" />
+            <SolidColorBrush x:Key="ButtonBackgroundDisabled" Color="Transparent" />
+        </Button.Resources>
+        <local:CommonImageEx
             x:Name="PersonPicture"
             Width="{x:Bind Width, Mode=OneWay}"
             Height="{x:Bind Height, Mode=OneWay}"
             BorderBrush="{x:Bind BorderBrush, Mode=OneWay}"
             BorderThickness="{x:Bind BorderThickness, Mode=OneWay}"
-            DisplayName="{x:Bind UserName, Mode=OneWay}"
+            CornerRadius="25"
+            DecodePixelWidth="{x:Bind DecodeSize, Mode=OneWay}"
+            ImageUrl="{x:Bind Avatar, Mode=OneWay}"
+            PlaceholderSource="/Assets/not_login.png"
             ToolTipService.ToolTip="{x:Bind UserName, Mode=OneWay}" />
-    </local:CardPanel>
+    </Button>
 </UserControl>

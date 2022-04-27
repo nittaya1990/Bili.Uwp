@@ -37,7 +37,7 @@ namespace Richasy.Bili.Controller.Uwp
         /// <returns><see cref="Task"/>.</returns>
         public async Task RequestMyProfileAsync()
         {
-            if (await _authorizeProvider.IsTokenValidAsync() && IsNetworkAvailable)
+            if (IsNetworkAvailable && await _authorizeProvider.IsTokenValidAsync())
             {
                 try
                 {
@@ -197,6 +197,35 @@ namespace Richasy.Bili.Controller.Uwp
         }
 
         /// <summary>
+        /// 请求搜索用户空间视频.
+        /// </summary>
+        /// <param name="userId">用户Id.</param>
+        /// <param name="keyword">关键词.</param>
+        /// <param name="pageNumber">页码.</param>
+        /// <returns><see cref="Task"/>.</returns>
+        public async Task RequestSearchUserVideoAsync(int userId, string keyword, int pageNumber)
+        {
+            ThrowWhenNetworkUnavaliable();
+
+            try
+            {
+                if (pageNumber < 1)
+                {
+                    pageNumber = 1;
+                }
+
+                var data = await _accountProvider.SearchUserSpaceVideoAsync(userId, keyword, pageNumber);
+                var args = new UserSpaceSearchVideoIterationEventArgs(data, userId);
+                UserSpaceSearchVideoIteration?.Invoke(this, args);
+            }
+            catch (Exception ex)
+            {
+                _loggerModule.LogError(ex);
+                throw;
+            }
+        }
+
+        /// <summary>
         /// 修改用户关系(关注/取消关注).
         /// </summary>
         /// <param name="userId">用户Id.</param>
@@ -258,6 +287,39 @@ namespace Richasy.Bili.Controller.Uwp
             {
                 var result = await _accountProvider.GetFollowsAsync(userId, pageNumber);
                 var args = new RelatedUserIterationEventArgs(result, pageNumber, userId);
+                FollowsIteration?.Invoke(this, args);
+            }
+            catch (Exception ex)
+            {
+                _loggerModule.LogError(ex, pageNumber > 1);
+                if (pageNumber <= 1)
+                {
+                    throw;
+                }
+            }
+        }
+
+        /// <summary>
+        /// 获取我的关注分组.
+        /// </summary>
+        /// <returns>关注分组.</returns>
+        public Task<List<RelatedTag>> GetMyFollowingTagsAsync()
+            => _accountProvider.GetMyFollowingTagsAsync();
+
+        /// <summary>
+        /// 获取我的关注分组.
+        /// </summary>
+        /// <param name="tagId">分组Id.</param>
+        /// <param name="pageNumber">页码.</param>
+        /// <returns>关注分组.</returns>
+        public async Task GetMyFollowingTagDetailAsync(int tagId, int pageNumber)
+        {
+            ThrowWhenNetworkUnavaliable();
+
+            try
+            {
+                var result = await _accountProvider.GetMyFollowingTagDetailAsync(_accountProvider.UserId, tagId, pageNumber);
+                var args = new RelatedUserIterationEventArgs(result, pageNumber);
                 FollowsIteration?.Invoke(this, args);
             }
             catch (Exception ex)
@@ -455,8 +517,9 @@ namespace Richasy.Bili.Controller.Uwp
         /// </summary>
         /// <param name="pageNumber">页码.</param>
         /// <param name="type">收藏夹类型.</param>
+        /// <param name="status">状态.</param>
         /// <returns><see cref="Task"/>.</returns>
-        public async Task RequestPgcFavoriteListAsync(int pageNumber, FavoriteType type)
+        public async Task RequestPgcFavoriteListAsync(int pageNumber, FavoriteType type, int status)
         {
             ThrowWhenNetworkUnavaliable();
             PgcFavoriteListResponse response = null;
@@ -465,11 +528,11 @@ namespace Richasy.Bili.Controller.Uwp
             {
                 if (type == FavoriteType.Anime)
                 {
-                    response = await _accountProvider.GetFavoriteAnimeListAsync(pageNumber);
+                    response = await _accountProvider.GetFavoriteAnimeListAsync(pageNumber, status);
                 }
                 else if (type == FavoriteType.Cinema)
                 {
-                    response = await _accountProvider.GetFavoriteCinemaListAsync(pageNumber);
+                    response = await _accountProvider.GetFavoriteCinemaListAsync(pageNumber, status);
                 }
 
                 var args = new FavoritePgcIterationEventArgs(response, pageNumber, type);
@@ -603,5 +666,14 @@ namespace Richasy.Bili.Controller.Uwp
         /// <returns>用户关系响应.</returns>
         public Task<UserRelationResponse> GetRelationAsync(int targetUserId)
             => _accountProvider.GetRelationAsync(targetUserId);
+
+        /// <summary>
+        /// 更新收藏的PGC内容状态.
+        /// </summary>
+        /// <param name="seasonId">PGC剧集Id.</param>
+        /// <param name="status">状态代码.</param>
+        /// <returns>是否更新成功.</returns>
+        public Task<bool> UpdateFavoritePgcStatusAsync(int seasonId, int status)
+            => _accountProvider.UpdateFavoritePgcStatusAsync(seasonId, status);
     }
 }

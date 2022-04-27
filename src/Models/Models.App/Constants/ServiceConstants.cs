@@ -44,6 +44,8 @@ namespace Richasy.Bili.Models.App.Constants
             public const string IOSSecret = "8cb98205e9b2ad3669aad0fce12a4c13";
             public const string WebKey = "84956560bc028eb7";
             public const string WebSecret = "94aba54af9065f71de72f5508f1cd42e";
+            public const string LoginKey = "783bbb7264451d82";
+            public const string LoginSecret = "2653583c8873dea268ab9386918b1d65";
         }
 
         public static class Query
@@ -72,6 +74,7 @@ namespace Richasy.Bili.Models.App.Constants
             public const string PageNumber = "pn";
             public const string PageSizeSlim = "ps";
             public const string Type = "type";
+            public const string SubType = "sub_type";
             public const string Idx = "idx";
             public const string Flush = "flush";
             public const string Device = "device";
@@ -144,6 +147,7 @@ namespace Richasy.Bili.Models.App.Constants
             public const string CopyRight = "copyright";
             public const string IsFinish = "is_finish";
             public const string PageSizeFull = "pagesize";
+            public const string PageSizeUnderline = "page_size";
             public const string SeasonMonth = "season_month";
             public const string SeasonStatus = "season_status";
             public const string SeasonVersion = "season_version";
@@ -164,12 +168,29 @@ namespace Richasy.Bili.Models.App.Constants
             public const string LikeTime = "like_time";
             public const string AtTime = "at_time";
             public const string ReplyTime = "reply_time";
-            public const string Protocol = "protocal";
+            public const string Protocol = "protocol";
             public const string Codec = "codec";
             public const string PType = "ptype";
             public const string Format = "format";
             public const string GraphVersion = "graph_version";
             public const string EdgeId = "edge_id";
+            public const string LoginSessionId = "login_session_id";
+            public const string GeeSeccode = "gee_seccode";
+            public const string GeeValidate = "gee_validate";
+            public const string GeeChallenge = "gee_challenge";
+            public const string RecaptchaToken = "recaptcha_token";
+            public const string AreaId = "area_id";
+            public const string CateId = "cate_id";
+            public const string ParentAreaId = "parent_area_id";
+            public const string SortType = "sort_type";
+            public const string NoPlayUrl = "no_playurl";
+            public const string Dolby = "dolby";
+            public const string Http = "http";
+            public const string OnlyAudio = "only_audio";
+            public const string OnlyVideo = "only_video";
+            public const string NeedHdr = "need_hdr";
+            public const string Mask = "mask";
+            public const string PlayType = "play_type";
         }
 
         public static class Sort

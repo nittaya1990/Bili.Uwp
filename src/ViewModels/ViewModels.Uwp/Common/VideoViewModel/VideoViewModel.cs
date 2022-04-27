@@ -2,11 +2,13 @@
 
 using System;
 using System.Linq;
+using System.Text.RegularExpressions;
 using Bilibili.App.Card.V1;
 using Bilibili.App.Dynamic.V2;
 using Bilibili.App.Interfaces.V1;
 using Bilibili.App.Show.V1;
 using Bilibili.App.View.V1;
+using Humanizer;
 using Richasy.Bili.Locator.Uwp;
 using Richasy.Bili.Models.App.Constants;
 using Richasy.Bili.Models.BiliBili;
@@ -38,6 +40,7 @@ namespace Richasy.Bili.ViewModels.Uwp
             Source = video;
             VideoType = Models.Enums.VideoType.Video;
             LimitCover(video.Cover);
+            CanShowAvatar = true;
         }
 
         /// <summary>
@@ -54,17 +57,8 @@ namespace Richasy.Bili.ViewModels.Uwp
             Source = archive;
             LimitCover(archive.Cover);
 
-            if (archive.IsPGC)
-            {
-                VideoType = Models.Enums.VideoType.Pgc;
-                var episodeId = new Uri(archive.Uri).Segments.Last().Replace("ep", string.Empty);
-                VideoId = episodeId;
-            }
-            else
-            {
-                VideoType = Models.Enums.VideoType.Video;
-                VideoId = archive.Avid.ToString();
-            }
+            VideoType = archive.IsPGC ? Models.Enums.VideoType.Pgc : Models.Enums.VideoType.Video;
+            VideoId = archive.Avid.ToString();
         }
 
         /// <summary>
@@ -85,6 +79,7 @@ namespace Richasy.Bili.ViewModels.Uwp
             PartitionName = video.PartitionName;
             PartitionId = video.PartitionId;
             Source = video;
+            CanShowAvatar = !string.IsNullOrEmpty(Publisher.Avatar);
             LimitCover(video.Cover);
         }
 
@@ -107,6 +102,7 @@ namespace Richasy.Bili.ViewModels.Uwp
             Source = video;
             PartitionId = video.Rid;
             AdditionalText = video.Pts.ToString();
+            CanShowAvatar = true;
             LimitCover(video.Cover);
         }
 
@@ -125,29 +121,26 @@ namespace Richasy.Bili.ViewModels.Uwp
                 // 视频处理.
                 DanmakuCount = card.SubStatusText;
                 LikeCount = string.Empty;
-                Publisher = new UserViewModel(card.CardArgs.PublisherName, userId: card.CardArgs.PublisherId);
-                if ((card.PlayerArgs?.Duration).HasValue)
-                {
-                    Duration = _numberToolkit.GetDurationText(TimeSpan.FromSeconds((double)card.PlayerArgs?.Duration));
-                }
-                else
-                {
-                    Duration = _numberToolkit.FormatDurationText(card.DurationText);
-                }
+                Publisher = new UserViewModel(card.Mask.Avatar);
+                Duration = (card.PlayerArgs?.Duration).HasValue
+                    ? _numberToolkit.GetDurationText(TimeSpan.FromSeconds((double)card.PlayerArgs?.Duration))
+                    : _numberToolkit.FormatDurationText(card.DurationText);
 
                 PartitionId = card.CardArgs.PartitionId;
                 PartitionName = card.CardArgs.PartitionName;
+                CanShowAvatar = true;
             }
             else
             {
                 // 动漫处理.
                 LikeCount = card.SubStatusText;
                 DanmakuCount = string.Empty;
-                Publisher = new UserViewModel(card.Description?.Text);
                 Duration = "--";
                 VideoType = Models.Enums.VideoType.Pgc;
             }
 
+            Description = card.Description;
+            IsShowDescription = !string.IsNullOrEmpty(Description);
             AdditionalText = card.RecommendReason ?? string.Empty;
             Source = card;
             LimitCover(card.Cover);
@@ -176,7 +169,7 @@ namespace Richasy.Bili.ViewModels.Uwp
         /// Initializes a new instance of the <see cref="VideoViewModel"/> class.
         /// </summary>
         /// <param name="followRoom">关注的直播间.</param>
-        public VideoViewModel(LiveFeedFollowRoom followRoom)
+        public VideoViewModel(LiveFeedRoom followRoom)
             : this()
         {
             Title = followRoom.Title;
@@ -188,6 +181,7 @@ namespace Richasy.Bili.ViewModels.Uwp
             LimitCover(followRoom.Cover);
             Source = followRoom;
             VideoType = Models.Enums.VideoType.Live;
+            CanShowAvatar = true;
         }
 
         /// <summary>
@@ -227,8 +221,10 @@ namespace Richasy.Bili.ViewModels.Uwp
             AdditionalText = relate.Rating.ToString();
             LimitCover(relate.Pic);
             Source = relate;
+            IsRelated = true;
             VideoType = relate.Goto.Equals(ServiceConstants.Av, StringComparison.OrdinalIgnoreCase) ?
                 Models.Enums.VideoType.Video : Models.Enums.VideoType.Pgc;
+            CanShowAvatar = true;
         }
 
         /// <summary>
@@ -247,6 +243,7 @@ namespace Richasy.Bili.ViewModels.Uwp
             Duration = _numberToolkit.FormatDurationText(item.Duration);
             LimitCover(item.Cover);
             Source = item;
+            CanShowAvatar = true;
         }
 
         /// <summary>
@@ -282,6 +279,7 @@ namespace Richasy.Bili.ViewModels.Uwp
             DanmakuCount = _numberToolkit.GetCountText(item.DanmakuCount);
             Publisher = new UserViewModel(item.PublisherName);
             Duration = _numberToolkit.GetDurationText(TimeSpan.FromSeconds(item.Duration));
+            PublishDate = DateTimeOffset.FromUnixTimeSeconds(item.CreateTime).ToLocalTime().Humanize();
             LimitCover(item.Cover);
             Source = item;
         }
@@ -330,7 +328,6 @@ namespace Richasy.Bili.ViewModels.Uwp
         public VideoViewModel(FavoriteMedia media)
             : this()
         {
-            VideoType = Models.Enums.VideoType.Video;
             Title = media.Title;
             VideoId = media.Id.ToString();
             PlayCount = _numberToolkit.GetCountText(media.Stat.PlayCount);
@@ -339,6 +336,47 @@ namespace Richasy.Bili.ViewModels.Uwp
             Duration = _numberToolkit.GetDurationText(TimeSpan.FromSeconds(media.Duration));
             LimitCover(media.Cover);
             Source = media;
+            CanShowAvatar = !string.IsNullOrEmpty(Publisher.Avatar);
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="VideoViewModel"/> class.
+        /// </summary>
+        /// <param name="arc">视频条目.</param>
+        public VideoViewModel(Arc arc)
+            : this()
+        {
+            var item = arc.Archive;
+            VideoType = Models.Enums.VideoType.Video;
+            Title = Regex.Replace(item.Title, "<[^>]+>", string.Empty);
+            VideoId = item.Aid.ToString();
+            PartitionName = item.TypeName;
+            PlayCount = _numberToolkit.GetCountText(item.Stat.View);
+            DanmakuCount = _numberToolkit.GetCountText(item.Stat.Danmaku);
+            Publisher = new UserViewModel(item.Author.Name, item.Author.Face, Convert.ToInt32(item.Author.Mid));
+            Duration = _numberToolkit.GetDurationText(TimeSpan.FromSeconds(item.Duration));
+            LimitCover(item.Pic);
+            Source = item;
+            CanShowAvatar = true;
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="VideoViewModel"/> class.
+        /// </summary>
+        /// <param name="episode">视频条目.</param>
+        public VideoViewModel(Episode episode)
+            : this()
+        {
+            VideoType = Models.Enums.VideoType.Video;
+            Title = Regex.Replace(episode.Title, "<[^>]+>", string.Empty);
+            VideoId = episode.Stat.Aid.ToString();
+            PlayCount = _numberToolkit.GetCountText(episode.Stat.View);
+            DanmakuCount = _numberToolkit.GetCountText(episode.Stat.Danmaku);
+            Publisher = new UserViewModel(episode.Author.Name, episode.Author.Face, Convert.ToInt32(episode.Author.Mid));
+            Duration = _numberToolkit.GetDurationText(TimeSpan.FromSeconds(episode.Page.Duration));
+            LimitCover(episode.Cover);
+            Source = episode;
+            CanShowAvatar = true;
         }
 
         internal VideoViewModel()

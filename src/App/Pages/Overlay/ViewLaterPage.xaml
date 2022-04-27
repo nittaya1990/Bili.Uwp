@@ -57,6 +57,14 @@
                             <controls:VerticalRepeaterView.AdditionalContent>
                                 <StackPanel Orientation="Horizontal" Spacing="8">
                                     <Button
+                                        x:Name="PlayAllButton"
+                                        Style="{StaticResource AccentButtonStyle}"
+                                        VerticalAlignment="Center"
+                                        Click="OnPlayAllButtonClick"
+                                        Visibility="{x:Bind ViewModel.IsShowEmpty, Mode=OneWay, Converter={StaticResource BoolToVisibilityReverseConverter}}">
+                                        <controls:IconTextBlock Symbol="Play16" Text="{loc:LocaleLocator Name=PlayAll}" />
+                                    </Button>
+                                    <Button
                                         x:Name="RefreshButton"
                                         VerticalAlignment="Center"
                                         Click="OnRefreshButtonClickAsync">
@@ -76,22 +84,25 @@
                             </controls:VerticalRepeaterView.AdditionalContent>
                             <controls:VerticalRepeaterView.ItemTemplate>
                                 <DataTemplate x:DataType="uwp:VideoViewModel">
-                                    <controls:VideoItem
+                                    <controls:VideoCard
                                         DataContext="{x:Bind}"
                                         IsShowDanmakuCount="True"
                                         IsShowLikeCount="True"
                                         IsShowPlayCount="True"
                                         ViewModel="{x:Bind}">
-                                        <controls:VideoItem.ContextFlyout>
+                                        <controls:VideoCard.ContextFlyout>
                                             <MenuFlyout>
-                                                <MenuFlyoutItem Click="OnRemoveItemClickAsync" Text="{loc:LocaleLocator Name=Remove}">
+                                                <MenuFlyoutItem
+                                                    MinWidth="160"
+                                                    Click="OnRemoveItemClickAsync"
+                                                    Text="{loc:LocaleLocator Name=Remove}">
                                                     <MenuFlyoutItem.Icon>
                                                         <icons:RegularFluentIcon Foreground="{ThemeResource SystemFillColorCriticalBrush}" Symbol="Delete20" />
                                                     </MenuFlyoutItem.Icon>
                                                 </MenuFlyoutItem>
                                             </MenuFlyout>
-                                        </controls:VideoItem.ContextFlyout>
-                                    </controls:VideoItem>
+                                        </controls:VideoCard.ContextFlyout>
+                                    </controls:VideoCard>
                                 </DataTemplate>
                             </controls:VerticalRepeaterView.ItemTemplate>
                         </controls:VerticalRepeaterView>

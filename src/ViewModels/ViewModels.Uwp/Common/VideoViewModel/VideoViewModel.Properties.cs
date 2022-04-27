@@ -68,6 +68,12 @@ namespace Richasy.Bili.ViewModels.Uwp
         public string ViewerCount { get; set; }
 
         /// <summary>
+        /// 发布时间.
+        /// </summary>
+        [Reactive]
+        public string PublishDate { get; set; }
+
+        /// <summary>
         /// 发布者.
         /// </summary>
         [Reactive]
@@ -84,6 +90,30 @@ namespace Richasy.Bili.ViewModels.Uwp
         /// </summary>
         [Reactive]
         public string AdditionalText { get; set; }
+
+        /// <summary>
+        /// 描述文本.
+        /// </summary>
+        [Reactive]
+        public string Description { get; set; }
+
+        /// <summary>
+        /// 是否显示描述文本.
+        /// </summary>
+        [Reactive]
+        public bool IsShowDescription { get; set; }
+
+        /// <summary>
+        /// 是否可以显示头像.
+        /// </summary>
+        [Reactive]
+        public bool CanShowAvatar { get; set; }
+
+        /// <summary>
+        /// 是否被选中.
+        /// </summary>
+        [Reactive]
+        public bool IsSelected { get; set; }
 
         /// <summary>
         /// 视频类型.
@@ -104,6 +134,11 @@ namespace Richasy.Bili.ViewModels.Uwp
         /// 原始封面地址.
         /// </summary>
         public string SourceCoverUrl { get; set; }
+
+        /// <summary>
+        /// 是否为关联视频.
+        /// </summary>
+        public bool IsRelated { get; set; }
 
         /// <inheritdoc/>
         public override bool Equals(object obj) => obj is VideoViewModel model && VideoId == model.VideoId;

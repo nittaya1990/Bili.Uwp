@@ -2,7 +2,7 @@
 
 using System;
 using System.Diagnostics;
-using System.Runtime.InteropServices;
+using System.Text;
 using FFmpegInterop;
 using Richasy.Bili.Controller.Uwp.Interfaces;
 using Richasy.Bili.Locator.Uwp;
@@ -29,15 +29,17 @@ namespace Richasy.Bili.App
         /// </summary>
         public App()
         {
-            this.InitializeComponent();
-            this.Suspending += this.OnSuspending;
-            this.UnhandledException += this.OnUnhandledException;
+            InitializeComponent();
+            Suspending += OnSuspending;
+            UnhandledException += OnUnhandledException;
             _ = AppViewModel.Instance;
             ServiceLocator.Instance.GetService<IAppToolkit>()
                                    .InitializeTheme();
 
             FFmpegInteropLogging.SetLogLevel(LogLevel.Error);
             FFmpegInteropLogging.SetLogProvider(this);
+            var provider = CodePagesEncodingProvider.Instance;
+            Encoding.RegisterProvider(provider);
 
             if (AppViewModel.Instance.IsXbox)
             {
@@ -59,7 +61,7 @@ namespace Richasy.Bili.App
         /// <param name="e">Detailed information about the start request and process.</param>
         protected override void OnLaunched(LaunchActivatedEventArgs e)
         {
-            this.OnLaunchedOrActivated(e);
+            OnLaunchedOrActivatedAsync(e);
         }
 
         /// <summary>
@@ -68,17 +70,11 @@ namespace Richasy.Bili.App
         /// <param name="args">Detailed information about the active request and process.</param>
         protected override void OnActivated(IActivatedEventArgs args)
         {
-            this.OnLaunchedOrActivated(args);
+            OnLaunchedOrActivatedAsync(args);
         }
 
-        private void OnLaunchedOrActivated(IActivatedEventArgs e)
+        private async void OnLaunchedOrActivatedAsync(IActivatedEventArgs e)
         {
-            // 用于解析Flv视频
-            if (RuntimeInformation.ProcessArchitecture != Architecture.Arm64)
-            {
-                _ = SYEngine.Core.Initialize();
-            }
-
             var appView = ApplicationView.GetForCurrentView();
             appView.SetPreferredMinSize(new Size(AppConstants.AppMinWidth, AppConstants.AppMinHeight));
             appView.SetDesiredBoundsMode(ApplicationViewBoundsMode.UseCoreWindow);
@@ -90,7 +86,7 @@ namespace Richasy.Bili.App
                 // Create a Frame to act as the navigation context and navigate to the first page
                 rootFrame = new Frame();
 
-                rootFrame.NavigationFailed += this.OnNavigationFailed;
+                rootFrame.NavigationFailed += OnNavigationFailed;
 
                 if (e.PreviousExecutionState == ApplicationExecutionState.Terminated)
                 {
@@ -111,12 +107,15 @@ namespace Richasy.Bili.App
             }
 
             // App launched or activated by link
-            else if (e is ProtocolActivatedEventArgs protocalArgs)
+            else if (e is IProtocolActivatedEventArgs protocalArgs)
             {
-                var arg = protocalArgs.Uri.Query.Replace("?", string.Empty);
                 if (rootFrame.Content == null)
                 {
-                    rootFrame.Navigate(typeof(Pages.RootPage), arg);
+                    rootFrame.Navigate(typeof(Pages.RootPage), protocalArgs);
+                }
+                else
+                {
+                    await AppViewModel.Instance.InitializeProtocolFromQueryAsync(protocalArgs.Uri);
                 }
             }
 
@@ -126,6 +125,18 @@ namespace Richasy.Bili.App
                 if (rootFrame.Content == null)
                 {
                     rootFrame.Navigate(typeof(Pages.RootPage));
+                }
+            }
+            else if (e.Kind == ActivationKind.CommandLineLaunch)
+            {
+                if (rootFrame.Content == null)
+                {
+                    rootFrame.Navigate(typeof(Pages.RootPage), e);
+                }
+                else
+                {
+                    var args = e as CommandLineActivatedEventArgs;
+                    await AppViewModel.Instance.InitializeCommandFromArgumentsAsync(args.Operation.Arguments);
                 }
             }
 

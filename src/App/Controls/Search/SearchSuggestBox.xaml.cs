@@ -1,5 +1,6 @@
 ﻿// Copyright (c) Richasy. All rights reserved.
 
+using Bilibili.App.Interfaces.V1;
 using Richasy.Bili.Models.BiliBili;
 using Richasy.Bili.ViewModels.Uwp;
 using Windows.UI.Xaml;
@@ -23,8 +24,8 @@ namespace Richasy.Bili.App.Controls
         /// </summary>
         public SearchSuggestBox()
         {
-            this.InitializeComponent();
-            this.Loaded += OnLoadedAsync;
+            InitializeComponent();
+            Loaded += OnLoadedAsync;
         }
 
         /// <summary>
@@ -52,7 +53,11 @@ namespace Richasy.Bili.App.Controls
         private void OnSizeChanged(object sender, SizeChangedEventArgs e)
         {
             var width = e.NewSize.Width;
-            HotSearchListView.Width = width - 16;
+
+            if (width > 16)
+            {
+                HotSearchListView.Width = width - 16;
+            }
         }
 
         private void OnHotSearchOpening(object sender, object e)
@@ -65,15 +70,33 @@ namespace Richasy.Bili.App.Controls
 
         private void OnSearchBoxSubmitted(AutoSuggestBox sender, AutoSuggestBoxQuerySubmittedEventArgs args)
         {
+            ViewModel.StopRequestSearchSuggestion();
+            if (args.ChosenSuggestion is ResultItem item)
+            {
+                ViewModel.InputWords = item.Keyword;
+            }
+
             if (!string.IsNullOrEmpty(sender.Text))
             {
                 AppViewModel.Instance.SetOverlayContentId(Models.Enums.PageIds.Search);
             }
+
+            ViewModel.SuggestionCollection.Clear();
         }
 
         private void OnHotSearchButtonClick(object sender, RoutedEventArgs e)
+            => HotSearchFlyout.ShowAt(AppSearchBox);
+
+        private async void OnTextChangedAsync(AutoSuggestBox sender, AutoSuggestBoxTextChangedEventArgs args)
         {
-            HotSearchFlyout.ShowAt(AppSearchBox);
+            if (args.Reason != AutoSuggestionBoxTextChangeReason.UserInput)
+            {
+                ViewModel.SuggestionCollection.Clear();
+            }
+            else
+            {
+                await ViewModel.RequestSearchSuggestionAsync();
+            }
         }
     }
 }

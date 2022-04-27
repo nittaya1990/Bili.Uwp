@@ -1,15 +1,20 @@
 ﻿// Copyright (c) Richasy. All rights reserved.
 
+using System;
 using System.ComponentModel;
 using System.Linq;
+using System.Threading.Tasks;
 using Richasy.Bili.App.Controls;
+using Richasy.Bili.App.Controls.Dialogs;
 using Richasy.Bili.Models.App.Args;
 using Richasy.Bili.ViewModels.Uwp;
+using Windows.ApplicationModel.Activation;
 using Windows.UI.Core;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Input;
 using Windows.UI.Xaml.Media.Animation;
+using Windows.UI.Xaml.Navigation;
 
 namespace Richasy.Bili.App.Pages
 {
@@ -18,17 +23,24 @@ namespace Richasy.Bili.App.Pages
     /// </summary>
     public sealed partial class RootPage : AppPage
     {
+        private string _initialCommandParameters = null;
+        private Uri _initialUri;
+
         /// <summary>
         /// Initializes a new instance of the <see cref="RootPage"/> class.
         /// </summary>
         public RootPage()
         {
-            this.InitializeComponent();
-            this.Loaded += OnLoadedAsync;
-            this.CoreViewModel.RequestShowTip += OnRequestShowTip;
-            this.CoreViewModel.RequestBack += OnRequestBack;
+            InitializeComponent();
+            CoreViewModel.Dispatcher = Dispatcher;
+            Loaded += OnLoadedAsync;
+            CoreViewModel.RequestShowTip += OnRequestShowTip;
+            CoreViewModel.RequestBack += OnRequestBackAsync;
+            CoreViewModel.RequestShowUpdateDialog += OnRequestShowUpdateDialogAsync;
+            CoreViewModel.RequestContinuePlay += OnRequestContinuePlayAsync;
+            CoreViewModel.RequestShowImages += OnRequestShowImagesAsync;
             SizeChanged += OnSizeChanged;
-            SystemNavigationManager.GetForCurrentView().BackRequested += OnBackRequested;
+            SystemNavigationManager.GetForCurrentView().BackRequested += OnBackRequestedAsync;
         }
 
         /// <summary>
@@ -67,12 +79,31 @@ namespace Richasy.Bili.App.Pages
         public void RemoveFromHolder(UIElement element)
         {
             HolderContainer.Children.Remove(element);
+            if (HolderContainer.Children.Count == 0)
+            {
+                CoreViewModel.IsBackButtonEnabled = true;
+            }
+        }
+
+        /// <inheritdoc/>
+        protected override void OnNavigatedTo(NavigationEventArgs e)
+        {
+            if (e.Parameter is CommandLineActivatedEventArgs command)
+            {
+                _initialCommandParameters = command.Operation.Arguments;
+            }
+            else if (e.Parameter is IProtocolActivatedEventArgs protocol)
+            {
+                _initialUri = protocol.Uri;
+            }
         }
 
         /// <inheritdoc/>
         protected override void OnPointerReleased(PointerRoutedEventArgs e)
         {
-            if (e.GetCurrentPoint(this).Properties.PointerUpdateKind == Windows.UI.Input.PointerUpdateKind.XButton1Released)
+            var kind = e.GetCurrentPoint(this).Properties.PointerUpdateKind;
+            if (kind == Windows.UI.Input.PointerUpdateKind.XButton1Released
+                || kind == Windows.UI.Input.PointerUpdateKind.MiddleButtonReleased)
             {
                 e.Handled = true;
                 CoreViewModel.Back();
@@ -81,7 +112,7 @@ namespace Richasy.Bili.App.Pages
             base.OnPointerReleased(e);
         }
 
-        private bool TryBack()
+        private async Task<bool> TryBackAsync()
         {
             if (HolderContainer.Children.Count > 0)
             {
@@ -94,27 +125,31 @@ namespace Richasy.Bili.App.Pages
             }
             else if (CoreViewModel.IsBackButtonEnabled)
             {
-                return TitleBar.TryBack();
+                return await TitleBar.TryBackAsync();
             }
 
             return false;
         }
 
-        private void OnRequestBack(object sender, System.EventArgs e) => TryBack();
+        private async void OnRequestBackAsync(object sender, System.EventArgs e) => await TryBackAsync();
 
         private async void OnLoadedAsync(object sender, RoutedEventArgs e)
         {
-            this.CoreViewModel.PropertyChanged += OnViewModelPropertyChanged;
-            this.CoreViewModel.RequestPlay += OnRequestPlay;
+            CoreViewModel.PropertyChanged += OnViewModelPropertyChanged;
+            CoreViewModel.RequestPlay += OnRequestPlay;
             CoreViewModel.InitializePadding();
             await AccountViewModel.Instance.TrySignInAsync(true);
+#if !DEBUG
+            await CoreViewModel.CheckUpdateAsync();
+#endif
         }
 
-        private void OnBackRequested(object sender, BackRequestedEventArgs e)
+        private async void OnBackRequestedAsync(object sender, BackRequestedEventArgs e)
         {
-            if (TryBack())
+            e.Handled = true;
+            if (!await TryBackAsync() && CoreViewModel.IsXbox)
             {
-                e.Handled = true;
+                App.Current.Exit();
             }
         }
 
@@ -123,6 +158,20 @@ namespace Richasy.Bili.App.Pages
 
         private void OnSizeChanged(object sender, SizeChangedEventArgs e)
             => CoreViewModel.InitializePadding();
+
+        private async void OnRequestShowImagesAsync(object sender, ShowImageEventArgs e)
+        {
+            var viewer = ImageViewer.Instance ?? new ImageViewer();
+            if (e != null && e.ImageUrls?.Count != 0)
+            {
+                ShowOnHolder(viewer);
+                await viewer.LoadImagesAsync(e.ImageUrls, e.ShowIndex);
+            }
+            else
+            {
+                RemoveFromHolder(viewer);
+            }
+        }
 
         private void OnViewModelPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
@@ -147,5 +196,47 @@ namespace Richasy.Bili.App.Pages
 
         private void OnRequestShowTip(object sender, AppTipNotificationEventArgs e)
             => new TipPopup(e.Message).ShowAsync(e.Type);
+
+        private async void OnRequestShowUpdateDialogAsync(object sender, UpdateEventArgs e)
+        {
+            try
+            {
+                await new UpgradeDialog(e).ShowAsync();
+            }
+            catch (Exception)
+            {
+            }
+        }
+
+        private async void OnRequestContinuePlayAsync(object sender, EventArgs e)
+        {
+            try
+            {
+                await new ContinuePlayDialog().ShowAsync();
+            }
+            catch (Exception)
+            {
+            }
+        }
+
+        private async void OnRootNavViewLoadedAsync(object sender, RoutedEventArgs e)
+        {
+            if (!string.IsNullOrEmpty(_initialCommandParameters))
+            {
+                await CoreViewModel.InitializeCommandFromArgumentsAsync(_initialCommandParameters);
+                _initialCommandParameters = null;
+            }
+            else if (_initialUri != null)
+            {
+                await CoreViewModel.InitializeProtocolFromQueryAsync(_initialUri);
+                _initialUri = null;
+            }
+            else
+            {
+                CoreViewModel.CheckContinuePlay();
+            }
+
+            await CoreViewModel.CheckNewDynamicRegistrationAsync();
+        }
     }
 }

@@ -19,7 +19,7 @@ namespace Richasy.Bili.Controller.Uwp
         /// </summary>
         /// <param name="isSlientOnly">是否只静默登录.</param>
         /// <returns><see cref="Task"/>.</returns>
-        public async Task TrySignInAsync(bool isSlientOnly = false)
+        public async Task<bool> TrySignInAsync(bool isSlientOnly = false)
         {
             try
             {
@@ -27,20 +27,23 @@ namespace Richasy.Bili.Controller.Uwp
                 if (isTokenValid)
                 {
                     Logged?.Invoke(this, EventArgs.Empty);
+                    return true;
                 }
                 else if (IsNetworkAvailable && !isSlientOnly)
                 {
-                    await _authorizeProvider.SignInAsync();
+                    return await _authorizeProvider.TrySignInAsync();
                 }
                 else
                 {
-                    LoggedFailed?.Invoke(this, new Exception());
+                    LoggedFailed?.Invoke(this, new OperationCanceledException());
+                    return false;
                 }
             }
             catch (Exception ex)
             {
                 _loggerModule.LogError(ex);
                 LoggedFailed?.Invoke(this, ex);
+                return false;
             }
         }
 
@@ -50,7 +53,7 @@ namespace Richasy.Bili.Controller.Uwp
         /// <returns><see cref="Task"/>.</returns>
         public async Task SignOutAsync()
         {
-            this._isRequestLogout = true;
+            _isRequestLogout = true;
             await _authorizeProvider.SignOutAsync();
         }
 
@@ -58,7 +61,8 @@ namespace Richasy.Bili.Controller.Uwp
         {
             if (e.NewState == AuthorizeState.SignedOut && !_isRequestLogout)
             {
-                LoggedFailed?.Invoke(this, new Exception("请求失败"));
+                LoggedFailed?.Invoke(this, new OperationCanceledException("请求失败"));
+                return;
             }
 
             switch (e.NewState)
@@ -68,7 +72,7 @@ namespace Richasy.Bili.Controller.Uwp
                     break;
                 case AuthorizeState.SignedOut:
                     LoggedOut?.Invoke(this, EventArgs.Empty);
-                    this._isRequestLogout = false;
+                    _isRequestLogout = false;
                     break;
                 default:
                     break;

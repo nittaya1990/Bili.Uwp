@@ -64,28 +64,27 @@ namespace Richasy.Bili.App.Controls
 
             if (size.HasValue)
             {
-                this._size = size.Value.ToVector2();
+                _size = size.Value.ToVector2();
             }
             else
             {
                 var maxRadius = (int)Math.Min(targetSize.Width, targetSize.Height);
                 if (isFill.Value)
                 {
-                    this._size = new Vector2(_rnd.Next(maxRadius / 7, maxRadius / 4));
+                    _size = new Vector2(_rnd.Next(maxRadius / 7, maxRadius / 4));
                 }
                 else
                 {
-                    this._size = new Vector2(_rnd.Next(maxRadius / 6, maxRadius / 3));
+                    _size = new Vector2(_rnd.Next(maxRadius / 6, maxRadius / 3));
                 }
             }
 
             Draw(isFill.Value, color);
 
             _offset = new Vector3((float)targetSize.Width / 2, (float)targetSize.Height / 2, 0f);
-            _visual.Size = this._size;
+            _visual.Size = _size;
             _visual.Offset = _offset;
             _visual.Scale = Vector3.Zero;
-            _visual.BindCenterPoint();
             CreateAnimation(targetSize, _visual.Offset, onTop, duration);
         }
 
@@ -111,15 +110,15 @@ namespace Richasy.Bili.App.Controls
         /// </summary>
         public void Start()
         {
-            _visual.StopAnimationGroup(_animations);
-            _visual.StartAnimationGroup(_animations);
+            if (_animations != null)
+            {
+                _visual.StopAnimationGroup(_animations);
+                _visual.StartAnimationGroup(_animations);
+            }
         }
 
         /// <inheritdoc/>
-        public void Dispose()
-        {
-            Dispose(true);
-        }
+        public void Dispose() => Dispose(true);
 
         private void Draw(bool isFill, Color color)
         {

@@ -78,6 +78,12 @@ namespace Richasy.Bili.Lib.Uwp
             else if (clientType == RequestClientType.Web)
             {
                 queryParameters.Add(ServiceConstants.Query.AppKey, ServiceConstants.Keys.WebKey);
+                queryParameters.Add(ServiceConstants.Query.Platform, "web");
+                queryParameters.Add(ServiceConstants.Query.TimeStamp, GetNowMilliSeconds().ToString());
+            }
+            else if (clientType == RequestClientType.Login)
+            {
+                queryParameters.Add(ServiceConstants.Query.AppKey, ServiceConstants.Keys.LoginKey);
                 queryParameters.Add(ServiceConstants.Query.TimeStamp, GetNowMilliSeconds().ToString());
             }
             else
@@ -88,7 +94,6 @@ namespace Richasy.Bili.Lib.Uwp
                 queryParameters.Add(ServiceConstants.Query.TimeStamp, GetNowSeconds().ToString());
             }
 
-            var query = string.Empty;
             var token = string.Empty;
             if (await IsTokenValidAsync())
             {
@@ -168,11 +173,11 @@ namespace Richasy.Bili.Lib.Uwp
         }
 
         /// <inheritdoc/>
-        public async Task SignInAsync()
+        public async Task<bool> TrySignInAsync()
         {
             if (await IsTokenValidAsync() || State != AuthorizeState.SignedOut)
             {
-                return;
+                return true;
             }
 
             State = AuthorizeState.Loading;
@@ -182,7 +187,10 @@ namespace Richasy.Bili.Lib.Uwp
             if (string.IsNullOrEmpty(token))
             {
                 await SignOutAsync();
+                return false;
             }
+
+            return true;
         }
 
         /// <inheritdoc/>

@@ -52,6 +52,20 @@ namespace Richasy.Bili.Lib.Uwp
         }
 
         /// <inheritdoc/>
+        public async Task<ViewReply> GetVideoDetailAsync(string videoId)
+        {
+            var viewRequest = new ViewReq()
+            {
+                Bvid = videoId,
+            };
+
+            var request = await _httpProvider.GetRequestMessageAsync(Video.Detail, viewRequest);
+            var response = await _httpProvider.SendAsync(request);
+            var data = await _httpProvider.ParseAsync(response, ViewReply.Parser);
+            return data;
+        }
+
+        /// <inheritdoc/>
         public async Task<string> GetOnlineViewerCountAsync(long videoId, long partId)
         {
             var queryParameters = new Dictionary<string, string>
@@ -69,15 +83,11 @@ namespace Richasy.Bili.Lib.Uwp
 
         /// <inheritdoc/>
         public async Task<PlayerInformation> GetDashAsync(long videoId, long partId)
-        {
-            return await InternalGetDashAsync(partId.ToString(), videoId.ToString());
-        }
+            => await InternalGetDashAsync(partId.ToString(), videoId.ToString());
 
         /// <inheritdoc/>
-        public async Task<PlayerInformation> GetDashAsync(int partId, int seasonType)
-        {
-            return await InternalGetDashAsync(partId.ToString(), seasonType: seasonType.ToString());
-        }
+        public async Task<PlayerInformation> GetDashAsync(int partId, int episodeId, int seasonType, string proxy = "", string area = "")
+            => await InternalGetDashAsync(partId.ToString(), string.Empty, seasonType.ToString(), proxy, area, episodeId.ToString());
 
         /// <inheritdoc/>
         public async Task<DmViewReply> GetDanmakuMetaDataAsync(long videoId, long partId)
@@ -141,9 +151,10 @@ namespace Richasy.Bili.Lib.Uwp
                 { Query.RealTime, progress.ToString() },
                 { Query.Progress, progress.ToString() },
                 { Query.Type, "4" },
+                { Query.SubType, "1" },
             };
 
-            var request = await _httpProvider.GetRequestMessageAsync(HttpMethod.Post, Video.ProgressReport, queryParameters, Models.Enums.RequestClientType.IOS, true);
+            var request = await _httpProvider.GetRequestMessageAsync(HttpMethod.Post, Video.ProgressReport, queryParameters, Models.Enums.RequestClientType.Android, true);
             var response = await _httpProvider.SendAsync(request, new CancellationTokenSource(TimeSpan.FromSeconds(5)).Token);
             var result = await _httpProvider.ParseAsync<ServerResponse>(response);
             return result.Code == 0;
@@ -312,6 +323,20 @@ namespace Richasy.Bili.Lib.Uwp
             var request = await _httpProvider.GetRequestMessageAsync(HttpMethod.Get, Video.InteractionEdge, queryParameters);
             var response = await _httpProvider.SendAsync(request);
             var result = await _httpProvider.ParseAsync<ServerResponse<InteractionEdgeResponse>>(response);
+            return result.Data;
+        }
+
+        /// <inheritdoc/>
+        public async Task<VideoStatusInfo> GetVideoStatusAsync(long videoId)
+        {
+            var queryParameters = new Dictionary<string, string>
+            {
+                { Query.Aid, videoId.ToString() },
+            };
+
+            var request = await _httpProvider.GetRequestMessageAsync(HttpMethod.Get, Video.Stat, queryParameters);
+            var response = await _httpProvider.SendAsync(request, new CancellationTokenSource(TimeSpan.FromSeconds(3)).Token);
+            var result = await _httpProvider.ParseAsync<ServerResponse<VideoStatusInfo>>(response);
             return result.Data;
         }
     }

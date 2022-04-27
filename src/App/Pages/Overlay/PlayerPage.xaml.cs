@@ -2,11 +2,12 @@
 
 using System;
 using System.ComponentModel;
+using System.Threading.Tasks;
+using Richasy.Bili.App.Controls;
 using Richasy.Bili.Models.Enums;
 using Richasy.Bili.ViewModels.Uwp;
 using Windows.UI.ViewManagement;
 using Windows.UI.Xaml;
-using Windows.UI.Xaml.Input;
 using Windows.UI.Xaml.Navigation;
 
 namespace Richasy.Bili.App.Pages.Overlay
@@ -51,14 +52,7 @@ namespace Richasy.Bili.App.Pages.Overlay
         {
             if (e.Parameter != null)
             {
-                if (e.Parameter is VideoViewModel videoVM)
-                {
-                    _navigateVM = videoVM;
-                }
-                else if (e.Parameter is SeasonViewModel ssVM)
-                {
-                    _navigateVM = ssVM;
-                }
+                _navigateVM = e.Parameter;
 
                 if (IsLoaded)
                 {
@@ -68,41 +62,30 @@ namespace Richasy.Bili.App.Pages.Overlay
         }
 
         /// <inheritdoc/>
-        protected override void OnNavigatedFrom(NavigationEventArgs e)
+        protected override async void OnNavigatedFrom(NavigationEventArgs e)
         {
             _navigateVM = null;
-            EnterDefaultModeAsync();
-            CoreViewModel.IsOverLayerExtendToTitleBar = false;
-        }
-
-        /// <inheritdoc/>
-        protected override void OnPointerReleased(PointerRoutedEventArgs e)
-        {
-            if (e.GetCurrentPoint(this).Properties.PointerUpdateKind == Windows.UI.Input.PointerUpdateKind.XButton1Released)
+            await EnterDefaultModeAsync();
+            if (ViewModel.IsShowViewLater)
             {
-                e.Handled = true;
-                if (ViewModel.PlayerDisplayMode != PlayerDisplayMode.Default)
+                foreach (var item in ViewModel.ViewLaterVideoCollection)
                 {
-                    ViewModel.PlayerDisplayMode = PlayerDisplayMode.Default;
-                }
-                else
-                {
-                    CoreViewModel.Back();
+                    item.IsSelected = false;
                 }
             }
 
-            base.OnPointerReleased(e);
+            CoreViewModel.IsOverLayerExtendToTitleBar = false;
         }
 
         private async void OnLoadedAsync(object sender, RoutedEventArgs e)
         {
-            ViewModel.PropertyChanged += OnViewModelPropertyChanged;
+            ViewModel.PropertyChanged += OnViewModelPropertyChangedAsync;
             if (_navigateVM != null)
             {
                 await ViewModel.LoadAsync(_navigateVM);
             }
 
-            CheckPlayerDisplayModeAsync();
+            await CheckPlayerDisplayModeAsync();
 
             if (ViewModel.IsDetailCanLoaded)
             {
@@ -110,12 +93,12 @@ namespace Richasy.Bili.App.Pages.Overlay
             }
         }
 
-        private void OnViewModelPropertyChanged(object sender, PropertyChangedEventArgs e)
+        private async void OnViewModelPropertyChangedAsync(object sender, PropertyChangedEventArgs e)
         {
             switch (e.PropertyName)
             {
                 case nameof(ViewModel.PlayerDisplayMode):
-                    CheckPlayerDisplayModeAsync();
+                    await CheckPlayerDisplayModeAsync();
                     break;
                 case nameof(ViewModel.IsDetailCanLoaded):
                     if (ViewModel.IsDetailCanLoaded)
@@ -131,7 +114,7 @@ namespace Richasy.Bili.App.Pages.Overlay
 
         private void OnUnloaded(object sender, RoutedEventArgs e)
         {
-            ViewModel.PropertyChanged -= OnViewModelPropertyChanged;
+            ViewModel.PropertyChanged -= OnViewModelPropertyChangedAsync;
             ViewModel.ClearPlayer();
         }
 
@@ -153,13 +136,13 @@ namespace Richasy.Bili.App.Pages.Overlay
             }
         }
 
-        private async void CheckPlayerDisplayModeAsync()
+        private async Task CheckPlayerDisplayModeAsync()
         {
             var appView = ApplicationView.GetForCurrentView();
 
             if (ViewModel.PlayerDisplayMode == PlayerDisplayMode.Default)
             {
-                EnterDefaultModeAsync();
+                await EnterDefaultModeAsync();
                 CoreViewModel.IsOverLayerExtendToTitleBar = false;
             }
             else
@@ -191,18 +174,26 @@ namespace Richasy.Bili.App.Pages.Overlay
                 }
                 else
                 {
-                    EnterDefaultModeAsync();
+                    await EnterDefaultModeAsync();
                 }
             }
 
             CheckPlayerVisual();
+
+            await Task.Delay(500);
+            await (ViewModel.BiliPlayer.TransportControls as BiliPlayerTransportControls).CheckCurrentPlayerModeAsync();
         }
 
-        private async void EnterDefaultModeAsync()
+        private async Task EnterDefaultModeAsync()
         {
             var appView = ApplicationView.GetForCurrentView();
             VisualStateManager.GoToState(this, nameof(StandardPlayerState), false);
-            ViewModel.BiliPlayer.IsFullWindow = false;
+
+            if (ViewModel.BiliPlayer != null)
+            {
+                ViewModel.BiliPlayer.IsFullWindow = false;
+            }
+
             if (appView.ViewMode == ApplicationViewMode.CompactOverlay)
             {
                 await appView.TryEnterViewModeAsync(ApplicationViewMode.Default);

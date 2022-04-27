@@ -8,8 +8,10 @@ using FFmpegInterop;
 using ReactiveUI.Fody.Helpers;
 using Richasy.Bili.Controller.Uwp;
 using Richasy.Bili.Controller.Uwp.Interfaces;
+using Richasy.Bili.Models.App;
 using Richasy.Bili.Models.BiliBili;
 using Richasy.Bili.Models.Enums;
+using Richasy.Bili.Models.Enums.App;
 using Richasy.Bili.Toolkit.Interfaces;
 using Windows.Media.Playback;
 using Windows.UI.Core;
@@ -29,6 +31,7 @@ namespace Richasy.Bili.ViewModels.Uwp
         private readonly IFileToolkit _fileToolkit;
         private readonly ILoggerModule _logger;
 
+        private readonly List<string> _historyVideoList;
         private readonly FFmpegInteropConfig _liveFFConfig;
 
         private long _videoId;
@@ -48,7 +51,6 @@ namespace Richasy.Bili.ViewModels.Uwp
 
         private List<DashItem> _audioList;
         private List<DashItem> _videoList;
-        private List<FlvItem> _flvList;
         private List<SubtitleItem> _subtitleList;
 
         private MediaPlayer _currentVideoPlayer;
@@ -61,6 +63,11 @@ namespace Richasy.Bili.ViewModels.Uwp
         private long _interactionNodeId;
         private bool _isInteractionChanging;
         private InteractionEdgeResponse _interactionDetail;
+
+        private bool _isFirstShowHistory;
+
+        private double _originalPlayRate;
+        private double _originalDanmakuSpeed;
 
         /// <summary>
         /// 让直播消息视图滚动到底部.
@@ -108,10 +115,9 @@ namespace Richasy.Bili.ViewModels.Uwp
         public CoreDispatcher Dispatcher { get; set; }
 
         /// <summary>
-        /// 是否使用经典播放器.
+        /// 当前是否为PV.
         /// </summary>
-        [Reactive]
-        public bool IsClassicPlayer { get; set; }
+        public bool IsPv { get; private set; }
 
         /// <summary>
         /// 详情是否可以加载（用于优化页面跳转的加载时间）.
@@ -216,7 +222,7 @@ namespace Richasy.Bili.ViewModels.Uwp
         public string ViewerCount { get; set; }
 
         /// <summary>
-        /// 播放器地址.
+        /// 封面地址.
         /// </summary>
         [Reactive]
         public string CoverUrl { get; set; }
@@ -242,74 +248,105 @@ namespace Richasy.Bili.ViewModels.Uwp
         /// <summary>
         /// 参演人员集合.
         /// </summary>
-        [Reactive]
-        public ObservableCollection<UserViewModel> StaffCollection { get; set; }
+        public ObservableCollection<UserViewModel> StaffCollection { get; }
 
         /// <summary>
         /// 关联视频集合.
         /// </summary>
-        [Reactive]
-        public ObservableCollection<VideoViewModel> RelatedVideoCollection { get; set; }
+        public ObservableCollection<VideoViewModel> RelatedVideoCollection { get; }
 
         /// <summary>
         /// 分集视频集合.
         /// </summary>
-        [Reactive]
-        public ObservableCollection<VideoPartViewModel> VideoPartCollection { get; set; }
+        public ObservableCollection<VideoPartViewModel> VideoPartCollection { get; }
 
         /// <summary>
         /// 视频清晰度集合.
         /// </summary>
-        [Reactive]
-        public ObservableCollection<VideoFormatViewModel> FormatCollection { get; set; }
+        public ObservableCollection<VideoFormatViewModel> FormatCollection { get; }
 
         /// <summary>
-        /// 直播清晰度集合.
+        /// 应用直播清晰度集合.
         /// </summary>
-        [Reactive]
-        public ObservableCollection<LiveQualityViewModel> LiveQualityCollection { get; set; }
+        public ObservableCollection<LiveAppQualityViewModel> LiveAppQualityCollection { get; }
 
         /// <summary>
-        /// 直播播放线路集合.
+        /// 应用直播播放线路集合.
         /// </summary>
-        [Reactive]
-        public ObservableCollection<LivePlayLineViewModel> LivePlayLineCollection { get; set; }
+        public ObservableCollection<LiveAppPlayLineViewModel> LiveAppPlayLineCollection { get; }
 
         /// <summary>
         /// PGC区块（比如PV）集合.
         /// </summary>
-        [Reactive]
-        public ObservableCollection<PgcSectionViewModel> PgcSectionCollection { get; set; }
+        public ObservableCollection<PgcSectionViewModel> PgcSectionCollection { get; }
 
         /// <summary>
         /// PGC分集集合.
         /// </summary>
-        [Reactive]
-        public ObservableCollection<PgcEpisodeViewModel> EpisodeCollection { get; set; }
+        public ObservableCollection<PgcEpisodeViewModel> EpisodeCollection { get; }
 
         /// <summary>
         /// PGC剧集/系列集合.
         /// </summary>
-        [Reactive]
-        public ObservableCollection<PgcSeasonViewModel> SeasonCollection { get; set; }
+        public ObservableCollection<PgcSeasonViewModel> SeasonCollection { get; }
 
         /// <summary>
         /// 直播弹幕集合.
         /// </summary>
-        [Reactive]
-        public ObservableCollection<LiveDanmakuMessage> LiveDanmakuCollection { get; set; }
+        public ObservableCollection<LiveDanmakuMessage> LiveDanmakuCollection { get; }
 
         /// <summary>
         /// 收藏夹集合.
         /// </summary>
-        [Reactive]
-        public ObservableCollection<FavoriteMetaViewModel> FavoriteMetaCollection { get; set; }
+        public ObservableCollection<FavoriteMetaViewModel> FavoriteMetaCollection { get; }
+
+        /// <summary>
+        /// 标签集合.
+        /// </summary>
+        public ObservableCollection<VideoTag> TagCollection { get; set; }
+
+        /// <summary>
+        /// 选项集合.
+        /// </summary>
+        public ObservableCollection<InteractionChoice> ChoiceCollection { get; }
+
+        /// <summary>
+        /// 播放速率节点集合.
+        /// </summary>
+        public ObservableCollection<double> PlaybackRateNodeCollection { get; }
+
+        /// <summary>
+        /// 稍后再看视频集合.
+        /// </summary>
+        public ObservableCollection<VideoViewModel> ViewLaterVideoCollection { get; }
+
+        /// <summary>
+        /// 显示的视频合集分话.
+        /// </summary>
+        public ObservableCollection<VideoViewModel> UgcEpisodeCollection { get; }
+
+        /// <summary>
+        /// 视频合集分区集合.
+        /// </summary>
+        public ObservableCollection<Section> UgcSectionCollection { get; }
 
         /// <summary>
         /// 当前分P.
         /// </summary>
         [Reactive]
         public ViewPage CurrentVideoPart { get; set; }
+
+        /// <summary>
+        /// 当前合集单话.
+        /// </summary>
+        [Reactive]
+        public Episode CurrentUgcEpisode { get; set; }
+
+        /// <summary>
+        /// 当前合集分区.
+        /// </summary>
+        [Reactive]
+        public Section CurrentUgcSection { get; set; }
 
         /// <summary>
         /// 当前分集.
@@ -324,16 +361,16 @@ namespace Richasy.Bili.ViewModels.Uwp
         public VideoFormat CurrentFormat { get; set; }
 
         /// <summary>
-        /// 当前直播播放线路.
+        /// 当前直播播放地址.
         /// </summary>
         [Reactive]
-        public LivePlayLine CurrentPlayLine { get; set; }
+        public LiveAppPlayLineViewModel CurrentPlayUrl { get; set; }
 
         /// <summary>
-        /// 当前直播清晰度.
+        /// 应用当前直播清晰度.
         /// </summary>
         [Reactive]
-        public LiveQualityDescription CurrentLiveQuality { get; set; }
+        public LiveAppQualityDescription CurrentAppLiveQuality { get; set; }
 
         /// <summary>
         /// 是否正在加载.
@@ -426,10 +463,22 @@ namespace Richasy.Bili.ViewModels.Uwp
         public bool IsShowChat { get; set; }
 
         /// <summary>
-        /// 是否回复.
+        /// 是否显示评论.
         /// </summary>
         [Reactive]
         public bool IsShowReply { get; set; }
+
+        /// <summary>
+        /// 是否显示稍后再看列表.
+        /// </summary>
+        [Reactive]
+        public bool IsShowViewLater { get; set; }
+
+        /// <summary>
+        /// 是否显示视频合集.
+        /// </summary>
+        [Reactive]
+        public bool IsShowUgcSection { get; set; }
 
         /// <summary>
         /// 点赞按钮是否被选中.
@@ -501,13 +550,25 @@ namespace Richasy.Bili.ViewModels.Uwp
         /// 显示的播放历史文本.
         /// </summary>
         [Reactive]
-        public string HistoryText { get; set; }
+        public string HistoryTipText { get; set; }
 
         /// <summary>
         /// 是否显示播放历史跳转提醒.
         /// </summary>
         [Reactive]
-        public bool IsShowHistory { get; set; }
+        public bool IsShowHistoryTip { get; set; }
+
+        /// <summary>
+        /// 显示的下一个视频提示文本.
+        /// </summary>
+        [Reactive]
+        public string NextVideoTipText { get; set; }
+
+        /// <summary>
+        /// 是否显示下一个视频提醒.
+        /// </summary>
+        [Reactive]
+        public bool IsShowNextVideoTip { get; set; }
 
         /// <summary>
         /// 请求收藏夹出错.
@@ -672,6 +733,12 @@ namespace Richasy.Bili.ViewModels.Uwp
         public string CurrentSubtitle { get; set; }
 
         /// <summary>
+        /// 字幕转换类型.
+        /// </summary>
+        [Reactive]
+        public SubtitleConvertType SubtitleConvertType { get; set; }
+
+        /// <summary>
         /// 当前字幕索引.
         /// </summary>
         [Reactive]
@@ -708,10 +775,20 @@ namespace Richasy.Bili.ViewModels.Uwp
         public bool IsShowInteractionEnd { get; set; }
 
         /// <summary>
-        /// 索引列表.
+        /// 是否仅显示分集索引.
         /// </summary>
         [Reactive]
-        public ObservableCollection<SubtitleIndexItemViewModel> SubtitleIndexCollection { get; set; }
+        public bool IsOnlyShowIndex { get; set; }
+
+        /// <summary>
+        /// 索引列表.
+        /// </summary>
+        public ObservableCollection<SubtitleIndexItemViewModel> SubtitleIndexCollection { get; }
+
+        /// <summary>
+        /// 字幕转换类型集合.
+        /// </summary>
+        public ObservableCollection<SubtitleConvertType> SubtitleConvertTypeCollection { get; }
 
         /// <summary>
         /// 播放速率.
@@ -720,10 +797,80 @@ namespace Richasy.Bili.ViewModels.Uwp
         public double PlaybackRate { get; set; }
 
         /// <summary>
-        /// 选项集合.
+        /// 是否显示切换集数的按钮.
         /// </summary>
         [Reactive]
-        public ObservableCollection<InteractionChoice> ChoiceCollection { get; set; }
+        public bool IsShowSwitchEpisodeButton { get; set; }
+
+        /// <summary>
+        /// 是否启用切换至上一集按钮.
+        /// </summary>
+        [Reactive]
+        public bool IsPreviousEpisodeButtonEnabled { get; set; }
+
+        /// <summary>
+        /// 是否启用切换至下一集按钮.
+        /// </summary>
+        [Reactive]
+        public bool IsNextEpisodeButtonEnabled { get; set; }
+
+        /// <summary>
+        /// 最大播放倍率.
+        /// </summary>
+        [Reactive]
+        public double MaxPlaybackRate { get; set; }
+
+        /// <summary>
+        /// 播放倍率步幅.
+        /// </summary>
+        [Reactive]
+        public double PlaybackRateStep { get; set; }
+
+        /// <summary>
+        /// 是否显示标签.
+        /// </summary>
+        [Reactive]
+        public bool IsShowTags { get; set; }
+
+        /// <summary>
+        /// 自动播放下一个视频的倒计时秒数.
+        /// </summary>
+        [Reactive]
+        public double NextVideoCountdown { get; set; }
+
+        /// <summary>
+        /// 光标是否在播放器范围内.
+        /// </summary>
+        public bool IsPointerInMediaElement { get; set; }
+
+        /// <summary>
+        /// 焦点此刻是否正位于输入控件上.
+        /// </summary>
+        public bool IsFocusInputControl { get; set; }
+
+        /// <summary>
+        /// 直播间仅播放音频.
+        /// </summary>
+        [Reactive]
+        public bool IsLiveAudioOnly { get; set; }
+
+        /// <summary>
+        /// 是否显示音频封面.
+        /// </summary>
+        [Reactive]
+        public bool IsShowAudioCover { get; set; }
+
+        /// <summary>
+        /// 该剧集是否已被固定在首页.
+        /// </summary>
+        [Reactive]
+        public bool IsContentFixed { get; set; }
+
+        /// <summary>
+        /// 是否开启洗脑循环.
+        /// </summary>
+        [Reactive]
+        public bool IsInfiniteLoop { get; set; }
 
         private BiliController Controller { get; } = BiliController.Instance;
     }

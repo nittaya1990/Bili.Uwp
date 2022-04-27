@@ -1,7 +1,7 @@
 ﻿// Copyright (c) Richasy. All rights reserved.
 
-using System;
 using System.ComponentModel;
+using System.Threading.Tasks;
 using Richasy.Bili.ViewModels.Uwp;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
@@ -43,7 +43,7 @@ namespace Richasy.Bili.App.Controls
         /// 尝试回退.
         /// </summary>
         /// <returns>是否调用了返回命令.</returns>
-        public bool TryBack()
+        public async Task<bool> TryBackAsync()
         {
             if (BackButton.Visibility != Visibility.Visible)
             {
@@ -52,8 +52,12 @@ namespace Richasy.Bili.App.Controls
 
             if (ViewModel.IsOpenPlayer)
             {
-                ViewModel.IsOpenPlayer = false;
-                return true;
+                if (await PlayerViewModel.Instance.CheckBackAsync())
+                {
+                    ViewModel.IsOpenPlayer = false;
+                    CheckDevice();
+                    return true;
+                }
             }
             else if (ViewModel.IsShowOverlay)
             {
@@ -78,12 +82,12 @@ namespace Richasy.Bili.App.Controls
 
         private void OnViewModelPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
-            if (e.PropertyName == nameof(ViewModel.IsOpenPlayer) || e.PropertyName == nameof(ViewModel.IsShowOverlay))
+            if (e.PropertyName == nameof(ViewModel.IsOpenPlayer)
+                || e.PropertyName == nameof(ViewModel.IsShowOverlay)
+                || e.PropertyName == nameof(ViewModel.CanShowHomeButton)
+                || e.PropertyName == nameof(ViewModel.IsXbox))
             {
                 CheckBackButtonVisibility();
-            }
-            else if (e.PropertyName == nameof(ViewModel.IsXbox))
-            {
                 CheckDevice();
             }
         }
@@ -93,32 +97,36 @@ namespace Richasy.Bili.App.Controls
             var width = Window.Current.Bounds.Width;
             if (ViewModel.IsXbox)
             {
-                MenuButton.Visibility = Visibility.Visible;
+                MenuButton.Visibility = ViewModel.IsOpenPlayer ? Visibility.Collapsed : Visibility.Visible;
                 AppNameBlock.Visibility = Visibility.Visible;
                 RightPaddingColumn.Width = new GridLength(24);
             }
             else
             {
                 RightPaddingColumn.Width = new GridLength(172);
-                MenuButton.Visibility = width >= ViewModel.MediumWindowThresholdWidth ? Visibility.Collapsed : Visibility.Visible;
+                MenuButton.Visibility = width >= ViewModel.MediumWindowThresholdWidth || ViewModel.IsOpenPlayer ? Visibility.Collapsed : Visibility.Visible;
                 AppNameBlock.Visibility = width >= ViewModel.MediumWindowThresholdWidth ? Visibility.Visible : Visibility.Collapsed;
             }
         }
 
         private void OnMenuButtonClick(object sender, RoutedEventArgs e)
-        {
-            ViewModel.IsNavigatePaneOpen = !ViewModel.IsNavigatePaneOpen;
-        }
+            => ViewModel.IsNavigatePaneOpen = !ViewModel.IsNavigatePaneOpen;
 
-        private void OnBackButtonClick(object sender, RoutedEventArgs e)
-        {
-            TryBack();
-        }
+        private async void OnBackButtonClickAsync(object sender, RoutedEventArgs e)
+            => await TryBackAsync();
 
         private void CheckBackButtonVisibility()
         {
             BackButton.Visibility = (ViewModel.IsShowOverlay || ViewModel.IsOpenPlayer) ?
                 Visibility.Visible : Visibility.Collapsed;
+            HomeButton.Visibility = (ViewModel.IsOpenPlayer && ViewModel.CanShowHomeButton) ?
+                Visibility.Visible : Visibility.Collapsed;
+        }
+
+        private async void OnHomeButtonClickAsync(object sender, RoutedEventArgs e)
+        {
+            await PlayerViewModel.Instance.BackToHomeAsync();
+            ViewModel.IsOpenPlayer = false;
         }
     }
 }

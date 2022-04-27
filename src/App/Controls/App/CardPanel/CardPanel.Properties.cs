@@ -14,9 +14,6 @@ namespace Richasy.Bili.App.Controls
         public static readonly DependencyProperty IsEnableHoverAnimationProperty =
             DependencyProperty.Register(nameof(IsEnableHoverAnimation), typeof(bool), typeof(CardPanel), new PropertyMetadata(true));
 
-        public static readonly DependencyProperty IsEnableShadowProperty =
-            DependencyProperty.Register(nameof(IsEnableShadow), typeof(bool), typeof(CardPanel), new PropertyMetadata(true, new PropertyChangedCallback(OnIsEnableShadowChanged)));
-
         public static readonly DependencyProperty IsEnableCheckProperty =
             DependencyProperty.Register(nameof(IsEnableCheck), typeof(bool), typeof(CardPanel), new PropertyMetadata(false));
 
@@ -62,22 +59,16 @@ namespace Richasy.Bili.App.Controls
         public static readonly DependencyProperty CheckedDisabledBackgroundProperty =
             DependencyProperty.Register(nameof(CheckedDisabledBackground), typeof(Brush), typeof(CardPanel), new PropertyMetadata(default));
 
+        public static readonly DependencyProperty StrokeThicknessProperty =
+            DependencyProperty.Register(nameof(StrokeThickness), typeof(double), typeof(CardPanel), new PropertyMetadata(1d));
+
         /// <summary>
         /// 是否支持鼠标移入/移出动画.
         /// </summary>
         public bool IsEnableHoverAnimation
         {
-            get { return (bool)this.GetValue(IsEnableHoverAnimationProperty); }
-            set { this.SetValue(IsEnableHoverAnimationProperty, value); }
-        }
-
-        /// <summary>
-        /// 是否显示阴影.
-        /// </summary>
-        public bool IsEnableShadow
-        {
-            get { return (bool)this.GetValue(IsEnableShadowProperty); }
-            set { this.SetValue(IsEnableShadowProperty, value); }
+            get { return (bool)GetValue(IsEnableHoverAnimationProperty); }
+            set { SetValue(IsEnableHoverAnimationProperty, value); }
         }
 
         /// <summary>
@@ -85,94 +76,102 @@ namespace Richasy.Bili.App.Controls
         /// </summary>
         public bool IsEnableCheck
         {
-            get { return (bool)this.GetValue(IsEnableCheckProperty); }
-            set { this.SetValue(IsEnableCheckProperty, value); }
+            get { return (bool)GetValue(IsEnableCheckProperty); }
+            set { SetValue(IsEnableCheckProperty, value); }
         }
 
         public Brush PointerOverBorderBrush
         {
-            get { return (Brush)this.GetValue(PointerOverBorderBrushProperty); }
-            set { this.SetValue(PointerOverBorderBrushProperty, value); }
+            get { return (Brush)GetValue(PointerOverBorderBrushProperty); }
+            set { SetValue(PointerOverBorderBrushProperty, value); }
         }
 
         public Brush PointerOverBackground
         {
-            get { return (Brush)this.GetValue(PointerOverBackgroundProperty); }
-            set { this.SetValue(PointerOverBackgroundProperty, value); }
+            get { return (Brush)GetValue(PointerOverBackgroundProperty); }
+            set { SetValue(PointerOverBackgroundProperty, value); }
         }
 
         public Brush PressedBorderBrush
         {
-            get { return (Brush)this.GetValue(PressedBorderBrushProperty); }
-            set { this.SetValue(PressedBorderBrushProperty, value); }
+            get { return (Brush)GetValue(PressedBorderBrushProperty); }
+            set { SetValue(PressedBorderBrushProperty, value); }
         }
 
         public Brush PressedBackground
         {
-            get { return (Brush)this.GetValue(PressedBackgroundProperty); }
-            set { this.SetValue(PressedBackgroundProperty, value); }
+            get { return (Brush)GetValue(PressedBackgroundProperty); }
+            set { SetValue(PressedBackgroundProperty, value); }
         }
 
         public Brush DisabledBorderBrush
         {
-            get { return (Brush)this.GetValue(DisabledBorderBrushProperty); }
-            set { this.SetValue(DisabledBorderBrushProperty, value); }
+            get { return (Brush)GetValue(DisabledBorderBrushProperty); }
+            set { SetValue(DisabledBorderBrushProperty, value); }
         }
 
         public Brush DisabledBackground
         {
-            get { return (Brush)this.GetValue(DisabledBackgroundProperty); }
-            set { this.SetValue(DisabledBackgroundProperty, value); }
+            get { return (Brush)GetValue(DisabledBackgroundProperty); }
+            set { SetValue(DisabledBackgroundProperty, value); }
         }
 
         public Brush CheckedBorderBrush
         {
-            get { return (Brush)this.GetValue(CheckedBorderBrushProperty); }
-            set { this.SetValue(CheckedBorderBrushProperty, value); }
+            get { return (Brush)GetValue(CheckedBorderBrushProperty); }
+            set { SetValue(CheckedBorderBrushProperty, value); }
         }
 
         public Brush CheckedBackground
         {
-            get { return (Brush)this.GetValue(CheckedBackgroundProperty); }
-            set { this.SetValue(CheckedBackgroundProperty, value); }
+            get { return (Brush)GetValue(CheckedBackgroundProperty); }
+            set { SetValue(CheckedBackgroundProperty, value); }
         }
 
         public Brush CheckedPointerOverBorderBrush
         {
-            get { return (Brush)this.GetValue(CheckedPointerOverBorderBrushProperty); }
-            set { this.SetValue(CheckedPointerOverBorderBrushProperty, value); }
+            get { return (Brush)GetValue(CheckedPointerOverBorderBrushProperty); }
+            set { SetValue(CheckedPointerOverBorderBrushProperty, value); }
         }
 
         public Brush CheckedPointerOverBackground
         {
-            get { return (Brush)this.GetValue(CheckedPointerOverBackgroundProperty); }
-            set { this.SetValue(CheckedPointerOverBackgroundProperty, value); }
+            get { return (Brush)GetValue(CheckedPointerOverBackgroundProperty); }
+            set { SetValue(CheckedPointerOverBackgroundProperty, value); }
         }
 
         public Brush CheckedPressedBorderBrush
         {
-            get { return (Brush)this.GetValue(CheckedPressedBorderBrushProperty); }
-            set { this.SetValue(CheckedPressedBorderBrushProperty, value); }
+            get { return (Brush)GetValue(CheckedPressedBorderBrushProperty); }
+            set { SetValue(CheckedPressedBorderBrushProperty, value); }
         }
 
         public Brush CheckedPressedBackground
         {
-            get { return (Brush)this.GetValue(CheckedPressedBackgroundProperty); }
-            set { this.SetValue(CheckedPressedBackgroundProperty, value); }
+            get { return (Brush)GetValue(CheckedPressedBackgroundProperty); }
+            set { SetValue(CheckedPressedBackgroundProperty, value); }
         }
 
         public Brush CheckedDisabledBorderBrush
         {
-            get { return (Brush)this.GetValue(CheckedDisabledBorderBrushProperty); }
-            set { this.SetValue(CheckedDisabledBorderBrushProperty, value); }
+            get { return (Brush)GetValue(CheckedDisabledBorderBrushProperty); }
+            set { SetValue(CheckedDisabledBorderBrushProperty, value); }
         }
 
         public Brush CheckedDisabledBackground
         {
-            get { return (Brush)this.GetValue(CheckedDisabledBackgroundProperty); }
-            set { this.SetValue(CheckedDisabledBackgroundProperty, value); }
+            get { return (Brush)GetValue(CheckedDisabledBackgroundProperty); }
+            set { SetValue(CheckedDisabledBackgroundProperty, value); }
         }
 
+        /// <summary>
+        /// 边框厚度.
+        /// </summary>
+        public double StrokeThickness
+        {
+            get { return (double)GetValue(StrokeThicknessProperty); }
+            set { SetValue(StrokeThicknessProperty, value); }
+        }
 #pragma warning restore SA1600 // Elements should be documented
     }
 }

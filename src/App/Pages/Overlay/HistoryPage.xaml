@@ -77,13 +77,14 @@
                         </controls:VerticalRepeaterView.AdditionalContent>
                         <controls:VerticalRepeaterView.ItemTemplate>
                             <DataTemplate x:DataType="uwp:VideoViewModel">
-                                <controls:VideoItem
+                                <controls:VideoCard
                                     IsShowAvatar="False"
                                     IsShowPlayCount="True"
                                     ViewModel="{x:Bind}">
-                                    <controls:VideoItem.ContextFlyout>
+                                    <controls:VideoCard.ContextFlyout>
                                         <MenuFlyout>
                                             <MenuFlyoutItem
+                                                MinWidth="160"
                                                 Click="OnDeleteItemClickAsync"
                                                 DataContext="{x:Bind}"
                                                 Text="{loc:LocaleLocator Name=Delete}">
@@ -92,8 +93,8 @@
                                                 </MenuFlyoutItem.Icon>
                                             </MenuFlyoutItem>
                                         </MenuFlyout>
-                                    </controls:VideoItem.ContextFlyout>
-                                </controls:VideoItem>
+                                    </controls:VideoCard.ContextFlyout>
+                                </controls:VideoCard>
                             </DataTemplate>
                         </controls:VerticalRepeaterView.ItemTemplate>
                     </controls:VerticalRepeaterView>

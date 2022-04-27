@@ -21,6 +21,7 @@ namespace Richasy.Bili.ViewModels.Uwp
         {
             Controller = BiliController.Instance;
             HotSearchCollection = new ObservableCollection<SearchRecommendItem>();
+            SuggestionCollection = new ObservableCollection<Bilibili.App.Interfaces.V1.ResultItem>();
             LoadModule();
         }
 
@@ -137,6 +138,29 @@ namespace Richasy.Bili.ViewModels.Uwp
                     break;
             }
         }
+
+        /// <summary>
+        /// 请求搜索建议.
+        /// </summary>
+        /// <returns><see cref="Task"/>.</returns>
+        public async Task RequestSearchSuggestionAsync()
+        {
+            if (!string.IsNullOrEmpty(InputWords))
+            {
+                var result = await Controller.GetSearchSuggestionAsync(InputWords);
+                if (result != null)
+                {
+                    SuggestionCollection.Clear();
+                    result.ForEach(p => SuggestionCollection.Add(p));
+                }
+            }
+        }
+
+        /// <summary>
+        /// 立刻停止获取搜索建议.
+        /// </summary>
+        public void StopRequestSearchSuggestion()
+            => Controller.StopRequestSearchSuggestion();
 
         private void LoadModule()
         {

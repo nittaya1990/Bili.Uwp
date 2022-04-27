@@ -19,7 +19,7 @@ namespace Richasy.Bili.App.Controls
         /// </summary>
         public CenterPopup()
         {
-            this.DefaultStyleKey = typeof(CenterPopup);
+            DefaultStyleKey = typeof(CenterPopup);
         }
 
         /// <summary>
@@ -37,7 +37,7 @@ namespace Richasy.Bili.App.Controls
         public void Hide()
         {
             SystemNavigationManager.GetForCurrentView().BackRequested -= OnBackRequest;
-            ((Window.Current.Content as Frame).Content as RootPage).ClearHolder();
+            ((Window.Current.Content as Frame).Content as RootPage).RemoveFromHolder(this);
             Closed?.Invoke(this, EventArgs.Empty);
         }
 

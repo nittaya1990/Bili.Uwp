@@ -24,12 +24,21 @@ namespace Richasy.Bili.ViewModels.Uwp
         {
             try
             {
+                if (!AppViewModel.Instance.IsOpenPlayer)
+                {
+                    return;
+                }
+
                 var httpClient = new HttpClient();
                 httpClient.DefaultRequestHeaders.Referer = new Uri("https://www.bilibili.com");
                 httpClient.DefaultRequestHeaders.Add("User-Agent", ServiceConstants.DefaultUserAgentString);
-                var mpdStr = await _fileToolkit.ReadPackageFile(AppConstants.DashVideoMPDFile);
 
-                var videos = _videoList.Where(p => p.CodecId == GetPreferCodecId()).ToList();
+                var mpdFilePath = _currentAudio == null
+                    ? AppConstants.DashVideoWithoudAudioMPDFile
+                    : AppConstants.DashVideoMPDFile;
+                var mpdStr = await _fileToolkit.ReadPackageFile(mpdFilePath);
+
+                var videos = _videoList.Where(p => p.Codecs.Contains(GetPreferCodecId())).ToList();
                 if (videos.Count == 0)
                 {
                     videos = _videoList;
@@ -86,52 +95,11 @@ namespace Richasy.Bili.ViewModels.Uwp
 
                 var mediaSource = MediaSource.CreateFromAdaptiveMediaSource(soure.MediaSource);
                 _currentPlaybackItem = new MediaPlaybackItem(mediaSource);
+                FillPlaybackProperties(_currentPlaybackItem);
+
                 _currentVideoPlayer.Source = _currentPlaybackItem;
 
-                IsClassicPlayer = false;
                 BiliPlayer.SetMediaPlayer(_currentVideoPlayer);
-                MediaPlayerUpdated?.Invoke(this, EventArgs.Empty);
-            }
-            catch (Exception)
-            {
-                IsPlayInformationError = true;
-                PlayInformationErrorText = _resourceToolkit.GetLocaleString(Models.Enums.LanguageNames.RequestVideoFailed);
-            }
-        }
-
-        private async Task InitializeFlvVideoAsync()
-        {
-            try
-            {
-                var playList = new SYEngine.Playlist(SYEngine.PlaylistTypes.NetworkHttp);
-                var config = default(SYEngine.PlaylistNetworkConfigs);
-                config.DownloadRetryOnFail = true;
-                config.HttpCookie = string.Empty;
-                config.UniqueId = string.Empty;
-                config.HttpUserAgent = ServiceConstants.DefaultUserAgentString;
-                if (IsPgc && CurrentPgcEpisode != null)
-                {
-                    config.HttpReferer = $"https://www.bilibili.com/bangumi/play/ep{CurrentPgcEpisode.Id}";
-                }
-                else
-                {
-                    config.HttpReferer = string.Empty;
-                }
-
-                playList.NetworkConfigs = config;
-                foreach (var item in _flvList)
-                {
-                    playList.Append(item.Url, item.Size, float.Parse((item.Length / 1000.0).ToString()));
-                }
-
-                if (ClassicPlayer != null)
-                {
-                    _initializeProgress = ClassicPlayer.Position;
-                }
-
-                IsClassicPlayer = true;
-                ClassicPlayer.AutoPlay = IsAutoPlay;
-                ClassicPlayer.Source = await playList.SaveAndGetFileUriAsync();
                 MediaPlayerUpdated?.Invoke(this, EventArgs.Empty);
             }
             catch (Exception)
@@ -145,6 +113,11 @@ namespace Richasy.Bili.ViewModels.Uwp
         {
             try
             {
+                if (!AppViewModel.Instance.IsOpenPlayer)
+                {
+                    return;
+                }
+
                 if (_interopMSS != null)
                 {
                     _interopMSS.Dispose();
@@ -161,6 +134,8 @@ namespace Richasy.Bili.ViewModels.Uwp
             }
 
             _currentPlaybackItem = _interopMSS.CreateMediaPlaybackItem();
+            FillPlaybackProperties(_currentPlaybackItem);
+
             if (_currentVideoPlayer == null)
             {
                 _currentVideoPlayer = InitializeMediaPlayer();
@@ -179,6 +154,17 @@ namespace Richasy.Bili.ViewModels.Uwp
             }
 
             return text;
+        }
+
+        private void FillPlaybackProperties(MediaPlaybackItem playbackItem)
+        {
+            var props = playbackItem.GetDisplayProperties();
+            props.Type = Windows.Media.MediaPlaybackType.Video;
+            props.Thumbnail = Windows.Storage.Streams.RandomAccessStreamReference.CreateFromUri(new Uri(CoverUrl + "@100w_100h_1c_100q.jpg"));
+            props.VideoProperties.Title = Title;
+            props.VideoProperties.Subtitle = GetSlimDescription(IsPgc ? Subtitle : Description);
+            props.VideoProperties.Genres.Add(_videoType.ToString());
+            playbackItem.ApplyDisplayProperties(props);
         }
     }
 }

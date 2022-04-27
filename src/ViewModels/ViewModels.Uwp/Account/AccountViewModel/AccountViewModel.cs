@@ -1,10 +1,16 @@
 ﻿// Copyright (c) Richasy. All rights reserved.
 
 using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Linq;
 using System.Threading.Tasks;
 using Richasy.Bili.Controller.Uwp;
 using Richasy.Bili.Locator.Uwp;
+using Richasy.Bili.Models.App;
+using Richasy.Bili.Models.App.Constants;
+using Richasy.Bili.Models.App.Other;
 using Richasy.Bili.Models.BiliBili;
 using Richasy.Bili.Models.Enums;
 
@@ -20,14 +26,16 @@ namespace Richasy.Bili.ViewModels.Uwp
         /// </summary>
         internal AccountViewModel()
         {
+            FixedItemCollection = new ObservableCollection<FixedItem>();
             _controller = BiliController.Instance;
             _controller.Logged += OnLoggedAsync;
-            _controller.LoggedFailed += OnLoggedFailed;
+            _controller.LoggedFailed += OnLoggedFailedAsync;
             _controller.LoggedOut += OnLoggedOut;
             _controller.AccountChanged += OnAccountChangedAsync;
             Status = AccountViewModelStatus.Logout;
             ServiceLocator.Instance.LoadService(out _resourceToolkit)
-                                   .LoadService(out _numberToolkit);
+                                   .LoadService(out _numberToolkit)
+                                   .LoadService(out _fileToolkit);
             Reset();
         }
 
@@ -36,10 +44,15 @@ namespace Richasy.Bili.ViewModels.Uwp
         /// </summary>
         /// <param name="isSlientOnly">是否只进行静默登录.</param>
         /// <returns><see cref="Task"/>.</returns>
-        public async Task TrySignInAsync(bool isSlientOnly = false)
+        public async Task<bool> TrySignInAsync(bool isSlientOnly = false)
         {
-            this.Status = AccountViewModelStatus.Logging;
-            await _controller.TrySignInAsync(isSlientOnly);
+            if (Status != AccountViewModelStatus.Logout)
+            {
+                return Status == AccountViewModelStatus.Login;
+            }
+
+            Status = AccountViewModelStatus.Logging;
+            return await _controller.TrySignInAsync(isSlientOnly);
         }
 
         /// <summary>
@@ -47,9 +60,7 @@ namespace Richasy.Bili.ViewModels.Uwp
         /// </summary>
         /// <returns><see cref="Task"/>.</returns>
         public async Task SignOutAsync()
-        {
-            await _controller.SignOutAsync();
-        }
+            => await _controller.SignOutAsync();
 
         /// <summary>
         /// 获取我的账户资料.
@@ -74,12 +85,18 @@ namespace Richasy.Bili.ViewModels.Uwp
         /// <returns><see cref="Task"/>.</returns>
         public async Task InitCommunityInformationAsync()
         {
-            var data = await _controller.GetMyDataAsync();
-            DynamicCount = _numberToolkit.GetCountText(data.DynamicCount);
-            FollowCount = _numberToolkit.GetCountText(data.FollowCount);
-            FollowerCount = _numberToolkit.GetCountText(data.FollowerCount);
+            try
+            {
+                var data = await _controller.GetMyDataAsync();
+                DynamicCount = _numberToolkit.GetCountText(data.DynamicCount);
+                FollowCount = _numberToolkit.GetCountText(data.FollowCount);
+                FollowerCount = _numberToolkit.GetCountText(data.FollowerCount);
 
-            await InitUnreadAsync();
+                await InitUnreadAsync();
+            }
+            catch (Exception)
+            {
+            }
         }
 
         /// <summary>
@@ -100,31 +117,77 @@ namespace Richasy.Bili.ViewModels.Uwp
             }
         }
 
+        /// <summary>
+        /// 新增固定的条目.
+        /// </summary>
+        /// <param name="item">条目信息.</param>
+        /// <returns><see cref="Task"/>.</returns>
+        public async Task AddFixedItemAsync(FixedItem item)
+        {
+            if (!IsConnected || _myInfo == null || FixedItemCollection.Contains(item))
+            {
+                return;
+            }
+
+            FixedItemCollection.Add(item);
+            await _fileToolkit.WriteLocalDataAsync(
+                string.Format(AppConstants.FixedContentFileName, _myInfo.Mid),
+                FixedItemCollection.ToList(),
+                AppConstants.FixedFolderName);
+            IsShowFixedItem = true;
+        }
+
+        /// <summary>
+        /// 移除固定的条目.
+        /// </summary>
+        /// <param name="itemId">条目Id.</param>
+        /// <returns><see cref="Task"/>.</returns>
+        public async Task RemoveFixedItemAsync(string itemId)
+        {
+            if (!IsConnected || _myInfo == null || !FixedItemCollection.Any(p => p.Id == itemId))
+            {
+                return;
+            }
+
+            FixedItemCollection.Remove(FixedItemCollection.FirstOrDefault(p => p.Id == itemId));
+            await _fileToolkit.WriteLocalDataAsync(
+                string.Format(AppConstants.FixedContentFileName, _myInfo.Mid),
+                FixedItemCollection.ToList(),
+                AppConstants.FixedFolderName);
+            IsShowFixedItem = FixedItemCollection.Count > 0;
+        }
+
         private void OnLoggedOut(object sender, EventArgs e)
         {
-            this.Status = AccountViewModelStatus.Logout;
+            Status = AccountViewModelStatus.Logout;
             Reset();
         }
 
-        private void OnLoggedFailed(object sender, Exception e)
+        private async void OnLoggedFailedAsync(object sender, Exception e)
         {
             Debug.WriteLine($"Login failed: {e.Message}");
 
             // 它仅在用户未登录时触发.
-            if (this.Status != AccountViewModelStatus.Login)
+            if (Status != AccountViewModelStatus.Login)
             {
                 Reset();
-                this.Status = AccountViewModelStatus.Logout;
+                Status = AccountViewModelStatus.Logout;
+
+                if (e is ServiceException serviceEx && (!serviceEx.Error?.IsHttpError ?? true))
+                {
+                    await _controller.SignOutAsync();
+                }
             }
         }
 
         private async void OnLoggedAsync(object sender, EventArgs e)
         {
-            if (this.Status != AccountViewModelStatus.Login)
+            if (Status != AccountViewModelStatus.Login)
             {
                 IsConnected = true;
                 await GetMyProfileAsync();
-                this.Status = AccountViewModelStatus.Login;
+                await InitializeFixedItemAsync();
+                Status = AccountViewModelStatus.Login;
             }
         }
 
@@ -153,7 +216,28 @@ namespace Richasy.Bili.ViewModels.Uwp
             IsVip = false;
             IsConnected = false;
             IsShowUnreadMessage = false;
+            IsShowFixedItem = false;
             UnreadMessageCount = 0;
+        }
+
+        private async Task InitializeFixedItemAsync()
+        {
+            if (IsConnected && _myInfo != null)
+            {
+                var data = await _fileToolkit.ReadLocalDataAsync<List<FixedItem>>(
+                    string.Format(AppConstants.FixedContentFileName, _myInfo.Mid),
+                    "[]",
+                    AppConstants.FixedFolderName);
+                FixedItemCollection.Clear();
+                if (data.Count > 0)
+                {
+                    data.ForEach(p => FixedItemCollection.Add(p));
+                    IsShowFixedItem = true;
+                    return;
+                }
+            }
+
+            IsShowFixedItem = false;
         }
     }
 }

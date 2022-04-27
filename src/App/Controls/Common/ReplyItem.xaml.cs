@@ -2,6 +2,7 @@
 
 using System;
 using Bilibili.Main.Community.Reply.V1;
+using Humanizer;
 using Richasy.Bili.Locator.Uwp;
 using Richasy.Bili.Toolkit.Interfaces;
 using Richasy.Bili.ViewModels.Uwp;
@@ -34,10 +35,13 @@ namespace Richasy.Bili.App.Controls
         /// </summary>
         public ReplyItem()
         {
-            this.InitializeComponent();
+            InitializeComponent();
             Orientation = Orientation.Horizontal;
         }
 
+        /// <summary>
+        /// 更多按钮被点击时触发.
+        /// </summary>
         public event EventHandler<ReplyInfo> MoreButtonClick;
 
         /// <summary>
@@ -84,26 +88,32 @@ namespace Richasy.Bili.App.Controls
                 instance.UserAvatar.UserName = instance.UserNameBlock.Text = data.Member.Name;
                 instance.UserAvatar.Avatar = data.Member.Face;
                 instance.LevelImage.Source = new BitmapImage(new Uri($"ms-appx:///Assets/Level/level_{data.Member.Level}.png"));
-                instance.ReplyContentBlock.Text = data.Content.Message;
                 var time = DateTimeOffset.FromUnixTimeSeconds(data.Ctime).ToLocalTime();
-                instance.PublishTimeBlock.Text = time.ToString("HH:mm");
+                instance.PublishTimeBlock.Text = time.Humanize();
                 ToolTipService.SetToolTip(instance.PublishTimeBlock, time.ToString("yyyy/MM/dd HH:mm:ss"));
                 instance.LikeButton.IsChecked = data.ReplyControl.Action == 1;
                 instance.LikeCountBlock.Text = ServiceLocator.Instance.GetService<INumberToolkit>().GetCountText(data.Like);
                 instance.MoreButton.Visibility = data.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
                 instance.MoreBlock.Text = string.Format(ServiceLocator.Instance.GetService<IResourceToolkit>().GetLocaleString(Models.Enums.LanguageNames.MoreReplyDisplay), data.Count);
+
+                if (PlayerViewModel.Instance.Publisher != null)
+                {
+                    instance.IsUpBorder.Visibility = data.Member.Mid.ToString() == PlayerViewModel.Instance.Publisher.Id.ToString() ? Visibility.Visible : Visibility.Collapsed;
+                }
+                else
+                {
+                    instance.IsUpBorder.Visibility = Visibility.Collapsed;
+                }
             }
         }
 
         private void OnMoreButtonClick(object sender, RoutedEventArgs e)
-        {
-            MoreButtonClick?.Invoke(this, Data);
-        }
+            => MoreButtonClick?.Invoke(this, Data);
 
         private async void OnLikeButtonClickAsync(object sender, RoutedEventArgs e)
         {
             var isLike = !(Data.ReplyControl.Action == 1);
-            this.Focus(FocusState.Programmatic);
+            Focus(FocusState.Programmatic);
             LikeButton.IsEnabled = false;
             var result = await ReplyModuleViewModel.Instance.LikeReplyAysnc(isLike, Data.Id);
             LikeButton.IsEnabled = true;
@@ -122,8 +132,14 @@ namespace Richasy.Bili.App.Controls
         }
 
         private void OnCardClick(object sender, RoutedEventArgs e)
+            => Click?.Invoke(this, EventArgs.Empty);
+
+        private async void OnAvatarClickAsync(object sender, EventArgs e)
         {
-            Click?.Invoke(this, EventArgs.Empty);
+            if (Data.Member != null)
+            {
+                await UserView.Instance.ShowAsync(Convert.ToInt32(Data.Member.Mid));
+            }
         }
     }
 }

@@ -72,32 +72,36 @@
                             Style="{StaticResource CaptionTextBlockStyle}"
                             Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                             Text="{loc:LocaleLocator Name=ChooseFavorite}" />
-                        <muxc:ItemsRepeater ItemsSource="{x:Bind ViewModel.FavoriteMetaCollection}">
-                            <muxc:ItemsRepeater.Layout>
-                                <muxc:StackLayout Spacing="4" />
-                            </muxc:ItemsRepeater.Layout>
-                            <muxc:ItemsRepeater.ItemTemplate>
-                                <DataTemplate x:DataType="uwp:FavoriteMetaViewModel">
-                                    <local:CardPanel
-                                        IsChecked="{x:Bind IsSelected, Mode=TwoWay}"
-                                        IsEnableCheck="True"
-                                        IsEnableHoverAnimation="False"
-                                        IsEnableShadow="False">
-                                        <Grid
-                                            Width="240"
-                                            Height="40"
-                                            Padding="12,8">
-                                            <TextBlock
-                                                Style="{StaticResource CaptionTextBlockStyle}"
-                                                VerticalAlignment="Center"
-                                                FontWeight="Bold"
-                                                Text="{x:Bind Data.Title}"
-                                                TextTrimming="CharacterEllipsis" />
-                                        </Grid>
-                                    </local:CardPanel>
-                                </DataTemplate>
-                            </muxc:ItemsRepeater.ItemTemplate>
-                        </muxc:ItemsRepeater>
+                        <ScrollViewer
+                            MaxHeight="320"
+                            HorizontalScrollMode="Disabled"
+                            VerticalScrollBarVisibility="Hidden">
+                            <muxc:ItemsRepeater ItemsSource="{x:Bind ViewModel.FavoriteMetaCollection}">
+                                <muxc:ItemsRepeater.Layout>
+                                    <muxc:StackLayout Spacing="4" />
+                                </muxc:ItemsRepeater.Layout>
+                                <muxc:ItemsRepeater.ItemTemplate>
+                                    <DataTemplate x:DataType="uwp:FavoriteMetaViewModel">
+                                        <local:CardPanel
+                                            IsChecked="{x:Bind IsSelected, Mode=TwoWay}"
+                                            IsEnableCheck="True"
+                                            IsEnableHoverAnimation="False">
+                                            <Grid
+                                                Width="240"
+                                                Height="40"
+                                                Padding="12,8">
+                                                <TextBlock
+                                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                                    VerticalAlignment="Center"
+                                                    FontWeight="Bold"
+                                                    Text="{x:Bind Data.Title}"
+                                                    TextTrimming="CharacterEllipsis" />
+                                            </Grid>
+                                        </local:CardPanel>
+                                    </DataTemplate>
+                                </muxc:ItemsRepeater.ItemTemplate>
+                            </muxc:ItemsRepeater>
+                        </ScrollViewer>
                         <Button
                             x:Name="RequestFavoriteButton"
                             Style="{StaticResource AccentButtonStyle}"
@@ -130,6 +134,7 @@
                 Click="OnLikeButtonClickAsync"
                 Description="{x:Bind ViewModel.LikeCount, Mode=OneWay}"
                 HoldingCompleted="OnLikeButtonHoldingCompletedAsync"
+                HoldingSuspend="OnLikeButtonHoldingSuspend"
                 IsChecked="{x:Bind ViewModel.IsLikeChecked, Mode=OneWay}"
                 IsHoldingEnabled="{x:Bind ViewModel.IsEnableLikeHolding}"
                 ToolTipService.ToolTip="{loc:LocaleLocator Name=Like}">
@@ -170,7 +175,26 @@
             Grid.Row="1"
             HorizontalAlignment="Stretch"
             Spacing="4">
-            <StackPanel
+
+            <RelativePanel Margin="0,0,0,8" Visibility="{x:Bind ViewModel.IsLive, Mode=OneWay, Converter={StaticResource BoolToVisibilityReverseConverter}}">
+                <TextBlock
+                    Style="{StaticResource CaptionTextBlockStyle}"
+                    RelativePanel.AlignLeftWithPanel="True"
+                    RelativePanel.AlignVerticalCenterWithPanel="True"
+                    VerticalAlignment="Center"
+                    Text="{loc:LocaleLocator Name=InfinityLoop}" />
+                <ToggleSwitch
+                    Style="{StaticResource RightAlignedCompactToggleSwitchStyle}"
+                    RelativePanel.AlignRightWithPanel="True"
+                    RelativePanel.AlignVerticalCenterWithPanel="True"
+                    MinWidth="0"
+                    MinHeight="0"
+                    FontSize="12"
+                    IsOn="{x:Bind ViewModel.IsInfiniteLoop, Mode=TwoWay}" />
+            </RelativePanel>
+
+
+            <Grid
                 x:Name="PgcControlContainer"
                 Margin="0,0,0,4"
                 HorizontalAlignment="Stretch"
@@ -185,30 +209,63 @@
                         Symbol="TextBulletListTree16"
                         Text="{loc:LocaleLocator Name=Detail}" />
                 </Button>
-            </StackPanel>
+            </Grid>
 
             <StackPanel
                 x:Name="LiveControlContainer"
                 Margin="0,0,0,4"
                 HorizontalAlignment="Stretch"
+                Spacing="8"
                 Visibility="{x:Bind ViewModel.IsLive, Mode=OneWay}">
+                <ToggleSwitch
+                    x:Name="LiveAudioOnlySwitch"
+                    Header="{loc:LocaleLocator Name=OnlyAudio}"
+                    IsOn="{x:Bind ViewModel.IsLiveAudioOnly, Mode=OneWay}"
+                    Toggled="OnLiveOnlyAudioToggledAsync">
+                    <ToggleSwitch.HeaderTemplate>
+                        <DataTemplate>
+                            <TextBlock
+                                Style="{StaticResource CaptionTextBlockStyle}"
+                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                Text="{Binding}" />
+                        </DataTemplate>
+                    </ToggleSwitch.HeaderTemplate>
+                </ToggleSwitch>
                 <TextBlock
                     Style="{StaticResource BodyTextBlockStyle}"
                     Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                     Text="{x:Bind ViewModel.LivePartition, Mode=OneWay}" />
             </StackPanel>
 
-            <Button
-                x:Name="ShareButton"
-                MinWidth="120"
-                Margin="0,0,0,8"
-                HorizontalAlignment="Stretch"
-                Click="OnShareButtonClick">
-                <local:IconTextBlock
-                    Foreground="{ThemeResource TextFillColorPrimaryBrush}"
-                    Symbol="Share16"
-                    Text="{loc:LocaleLocator Name=Share}" />
-            </Button>
+            <Grid Margin="0,0,0,8" ColumnSpacing="8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition />
+                    <ColumnDefinition />
+                </Grid.ColumnDefinitions>
+                <Button
+                    x:Name="ShareButton"
+                    HorizontalAlignment="Stretch"
+                    Click="OnShareButtonClick">
+                    <local:IconTextBlock
+                        Foreground="{ThemeResource TextFillColorPrimaryBrush}"
+                        Symbol="Share16"
+                        Text="{loc:LocaleLocator Name=Share}" />
+                </Button>
+                <Button
+                    Grid.Column="1"
+                    Padding="8"
+                    HorizontalAlignment="Stretch"
+                    Click="OnFixButtonClickAsync"
+                    Content="{loc:LocaleLocator Name=FixContent}"
+                    Visibility="{x:Bind ViewModel.IsContentFixed, Mode=OneWay, Converter={StaticResource BoolToVisibilityReverseConverter}}" />
+                <Button
+                    Grid.Column="1"
+                    Padding="8"
+                    HorizontalAlignment="Stretch"
+                    Click="OnFixButtonClickAsync"
+                    Content="{loc:LocaleLocator Name=UnfixContent}"
+                    Visibility="{x:Bind ViewModel.IsContentFixed, Mode=OneWay}" />
+            </Grid>
 
             <Button
                 x:Name="CreateDownloadCommandButton"

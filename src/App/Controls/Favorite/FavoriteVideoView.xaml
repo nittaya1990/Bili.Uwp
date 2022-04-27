@@ -68,10 +68,13 @@
         </Grid>
         <Grid Grid.Row="1">
             <Grid>
-                <ScrollViewer HorizontalScrollMode="Disabled" VerticalScrollBarVisibility="Hidden">
+                <ScrollViewer
+                    Margin="-16,0"
+                    HorizontalScrollMode="Disabled"
+                    VerticalScrollBarVisibility="Auto">
                     <local:VerticalRepeaterView
                         x:Name="VideoView"
-                        Margin="0,0,0,12"
+                        Margin="16,0,16,12"
                         Background="Transparent"
                         HeaderVisibility="Collapsed"
                         ItemOrientation="Horizontal"
@@ -80,15 +83,15 @@
                         Visibility="{x:Bind ViewModel.IsInitializeLoading, Mode=OneWay, Converter={StaticResource BoolToVisibilityReverseConverter}}">
                         <local:VerticalRepeaterView.ItemTemplate>
                             <DataTemplate x:DataType="uwp:VideoViewModel">
-                                <local:VideoItem
+                                <local:VideoCard
                                     DataContext="{x:Bind}"
                                     IsShowAvatar="False"
                                     IsShowDanmakuCount="True"
                                     IsShowDuration="True"
                                     IsShowPlayCount="True"
-                                    ItemClick="OnVideoItemClick"
+                                    ItemClick="OnVideoCardClick"
                                     ViewModel="{x:Bind}">
-                                    <local:VideoItem.ContextFlyout>
+                                    <local:VideoCard.ContextFlyout>
                                         <muxc:CommandBarFlyout Opening="OnVideoFlyoutOpening">
                                             <muxc:CommandBarFlyout.SecondaryCommands>
                                                 <AppBarButton Click="OnAddToViewLaterButtonClickAsync" Label="{loc:LocaleLocator Name=AddToViewLater}">
@@ -103,8 +106,8 @@
                                                 </AppBarButton>
                                             </muxc:CommandBarFlyout.SecondaryCommands>
                                         </muxc:CommandBarFlyout>
-                                    </local:VideoItem.ContextFlyout>
-                                </local:VideoItem>
+                                    </local:VideoCard.ContextFlyout>
+                                </local:VideoCard>
                             </DataTemplate>
                         </local:VerticalRepeaterView.ItemTemplate>
                     </local:VerticalRepeaterView>

@@ -57,12 +57,14 @@ namespace Richasy.Bili.ViewModels.Uwp
                 new KeyValue<string>("Win2D", "https://github.com/microsoft/Win2D"),
                 new KeyValue<string>("Windows Community Toolkit", "https://github.com/CommunityToolkit/WindowsCommunityToolkit"),
                 new KeyValue<string>("Fluent UI System Icons", "https://github.com/microsoft/fluentui-system-icons"),
+                new KeyValue<string>("寒霜弹幕使", "https://github.com/cotaku/DanmakuFrostMaster"),
                 new KeyValue<string>("NSDanmaku", "https://github.com/xiaoyaocz/NSDanmaku"),
-                new KeyValue<string>("HN.Controls.ImageEx", "https://github.com/xiaoyaocz/NSDanmaku"),
+                new KeyValue<string>("HN.Controls.ImageEx", "https://github.com/h82258652/HN.Controls.ImageEx"),
                 new KeyValue<string>("bilibili-API-collect", "https://github.com/SocialSisterYi/bilibili-API-collect"),
                 new KeyValue<string>("FFmpeg", "https://github.com/FFmpeg/FFmpeg"),
                 new KeyValue<string>("FFmpegInteropX", "https://github.com/ffmpeginteropx/FFmpegInteropX"),
                 new KeyValue<string>("BBDown", "https://github.com/nilaoda/BBDown"),
+                new KeyValue<string>("哔哩漫游", "https://github.com/yujincheng08/BiliRoaming"),
             };
         }
     }

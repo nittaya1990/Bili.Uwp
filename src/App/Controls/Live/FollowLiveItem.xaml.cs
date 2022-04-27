@@ -1,9 +1,7 @@
 ﻿// Copyright (c) Richasy. All rights reserved.
 
 using System;
-using Richasy.Bili.Models.BiliBili;
 using Richasy.Bili.ViewModels.Uwp;
-using Windows.System;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 
@@ -31,8 +29,8 @@ namespace Richasy.Bili.App.Controls
         /// </summary>
         public FollowLiveItem()
         {
-            this.InitializeComponent();
-            this.Loaded += OnLoaded;
+            InitializeComponent();
+            Loaded += OnLoaded;
         }
 
         /// <summary>
@@ -68,9 +66,7 @@ namespace Richasy.Bili.App.Controls
         }
 
         private void OnLoaded(object sender, RoutedEventArgs e)
-        {
-            CheckOrientation();
-        }
+            => CheckOrientation();
 
         private void CheckOrientation()
         {
@@ -89,15 +85,13 @@ namespace Richasy.Bili.App.Controls
             }
         }
 
-        private async void OnCardClickAsync(object sender, RoutedEventArgs e)
+        private void OnCardClick(object sender, RoutedEventArgs e)
         {
             ItemClick?.Invoke(this, EventArgs.Empty);
-            await PlayerViewModel.Instance.LoadAsync(ViewModel);
+            AppViewModel.Instance.OpenPlayer(ViewModel);
         }
 
         private void OnItemClick(object sender, VideoViewModel e)
-        {
-            ItemClick?.Invoke(this, EventArgs.Empty);
-        }
+            => ItemClick?.Invoke(this, EventArgs.Empty);
     }
 }

@@ -1,11 +1,13 @@
 ﻿// Copyright (c) Richasy. All rights reserved.
 
 using System.Collections.Generic;
+using System.Linq;
 using System.Net.Http;
+using System.Threading;
 using System.Threading.Tasks;
 using Richasy.Bili.Lib.Interfaces;
 using Richasy.Bili.Models.BiliBili;
-
+using Richasy.Bili.Toolkit.Interfaces;
 using static Richasy.Bili.Models.App.Constants.ApiConstants;
 using static Richasy.Bili.Models.App.Constants.ServiceConstants;
 
@@ -20,9 +22,11 @@ namespace Richasy.Bili.Lib.Uwp
         /// Initializes a new instance of the <see cref="SearchProvider"/> class.
         /// </summary>
         /// <param name="httpProvider">网络工具.</param>
-        public SearchProvider(IHttpProvider httpProvider)
+        /// <param name="settingsToolkit">设置工具.</param>
+        public SearchProvider(IHttpProvider httpProvider, ISettingsToolkit settingsToolkit)
         {
             _httpProvider = httpProvider;
+            _settingsToolkit = settingsToolkit;
         }
 
         /// <inheritdoc/>
@@ -103,6 +107,21 @@ namespace Richasy.Bili.Lib.Uwp
             var response = await _httpProvider.SendAsync(request);
             var result = await _httpProvider.ParseAsync<ServerResponse<LiveSearchResultResponse>>(response);
             return result.Data;
+        }
+
+        /// <inheritdoc/>
+        public async Task<List<Bilibili.App.Interfaces.V1.ResultItem>> GetSearchSuggestion(string keyword, CancellationToken cancellationToken)
+        {
+            var req = new Bilibili.App.Interfaces.V1.SuggestionResult3Req()
+            {
+                Keyword = keyword,
+                Highlight = 0,
+            };
+
+            var request = await _httpProvider.GetRequestMessageAsync(Search.Suggestion, req);
+            var response = await _httpProvider.SendAsync(request, cancellationToken);
+            var result = await _httpProvider.ParseAsync(response, Bilibili.App.Interfaces.V1.SuggestionResult3Reply.Parser);
+            return result.List.ToList();
         }
     }
 }

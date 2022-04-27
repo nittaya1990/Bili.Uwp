@@ -24,7 +24,7 @@ namespace Richasy.Bili.App.Pages
         /// </summary>
         public HelpPage()
         {
-            this.InitializeComponent();
+            InitializeComponent();
         }
 
         /// <summary>
@@ -76,6 +76,12 @@ namespace Richasy.Bili.App.Pages
                     Grid.SetRow(QuestionContainer, 0);
                 }
             }
+        }
+
+        private async void OnLinkViewItemClickAsync(object sender, ItemClickEventArgs e)
+        {
+            var data = e.ClickedItem as Models.App.Other.KeyValue<string>;
+            await Launcher.LaunchUriAsync(new Uri(data.Value));
         }
     }
 }

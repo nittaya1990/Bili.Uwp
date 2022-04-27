@@ -10,24 +10,11 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:muxc="using:Microsoft.UI.Xaml.Controls"
     xmlns:triggers="using:Microsoft.Toolkit.Uwp.UI.Triggers"
+    xmlns:uwp="using:Richasy.FluentIcon.Uwp"
     Height="48"
     d:DesignHeight="300"
     d:DesignWidth="400"
     mc:Ignorable="d">
-
-    <UserControl.Resources>
-        <Style
-            x:Key="TitleBarButtonStyle"
-            BasedOn="{StaticResource DefaultButtonStyle}"
-            TargetType="Button">
-            <Setter Property="Background" Value="Transparent" />
-            <Setter Property="BorderBrush" Value="Transparent" />
-            <Setter Property="Width" Value="36" />
-            <Setter Property="Height" Value="32" />
-            <Setter Property="Padding" Value="0" />
-            <Setter Property="VerticalAlignment" Value="Center" />
-        </Style>
-    </UserControl.Resources>
 
     <Grid x:Name="RootGrid" TabFocusNavigation="Local">
         <VisualStateManager.VisualStateGroups>
@@ -58,10 +45,7 @@
             x:Name="TitleBarHost"
             MinHeight="48"
             Fill="Transparent" />
-        <Grid
-            x:Name="ContentGrid"
-            Padding="6,0,0,0"
-            Visibility="{x:Bind ViewModel.IsOverLayerExtendToTitleBar, Mode=OneWay, Converter={StaticResource BoolToVisibilityReverseConverter}}">
+        <Grid x:Name="ContentGrid" Visibility="{x:Bind ViewModel.IsOverLayerExtendToTitleBar, Mode=OneWay, Converter={StaticResource BoolToVisibilityReverseConverter}}">
 
             <Grid.ColumnDefinitions>
                 <!-- Back button -->
@@ -80,9 +64,12 @@
 
             <Button
                 x:Name="BackButton"
+                AutomationProperties.Name="{loc:LocaleLocator Name=BackToPrevious}"
                 Style="{StaticResource TitleBarButtonStyle}"
-                Click="OnBackButtonClick"
-                TabIndex="1">
+                Padding="6,0,0,0"
+                Click="OnBackButtonClickAsync"
+                TabIndex="1"
+                ToolTipService.ToolTip="{loc:LocaleLocator Name=BackToPrevious}">
                 <Button.KeyboardAccelerators>
                     <KeyboardAccelerator Key="Back" IsEnabled="{x:Bind ViewModel.IsBackButtonEnabled, Mode=OneWay}" />
                 </Button.KeyboardAccelerators>
@@ -121,11 +108,53 @@
             </Button>
 
             <Button
+                x:Name="HomeButton"
+                AutomationProperties.Name="{loc:LocaleLocator Name=BackToHome}"
+                Style="{StaticResource TitleBarButtonStyle}"
+                Grid.Column="1"
+                Click="OnHomeButtonClickAsync"
+                TabIndex="2"
+                ToolTipService.ToolTip="{loc:LocaleLocator Name=BackToHome}"
+                Visibility="Collapsed">
+                <Button.KeyboardAccelerators>
+                    <KeyboardAccelerator Key="Home" IsEnabled="{x:Bind ViewModel.IsBackButtonEnabled, Mode=OneWay}" />
+                </Button.KeyboardAccelerators>
+                <animations:Implicit.ShowAnimations>
+                    <animations:OpacityAnimation
+                        From="0"
+                        To="1"
+                        Duration="0:0:0.3" />
+                    <animations:ScaleAnimation
+                        From="0.5"
+                        To="1"
+                        Duration="0:0:0.3" />
+                </animations:Implicit.ShowAnimations>
+                <animations:Implicit.HideAnimations>
+                    <animations:OpacityAnimation
+                        From="1"
+                        To="0"
+                        Duration="0:0:0.2" />
+                    <animations:ScaleAnimation
+                        From="1"
+                        To="0.5"
+                        Duration="0:0:0.2" />
+                </animations:Implicit.HideAnimations>
+                <Viewbox
+                    Width="16"
+                    Height="16"
+                    HorizontalAlignment="Stretch"
+                    VerticalAlignment="Stretch">
+                    <uwp:RegularFluentIcon Symbol="Home16" />
+                </Viewbox>
+            </Button>
+
+            <Button
                 x:Name="MenuButton"
                 Style="{StaticResource TitleBarButtonStyle}"
                 Grid.Column="1"
+                Padding="6,0,0,0"
                 Click="OnMenuButtonClick"
-                TabIndex="2"
+                TabIndex="3"
                 Visibility="Collapsed">
                 <animations:Implicit.ShowAnimations>
                     <animations:OpacityAnimation
@@ -163,7 +192,7 @@
 
             <StackPanel
                 Grid.Column="2"
-                Margin="8,0,12,0"
+                Margin="16,0,12,0"
                 VerticalAlignment="Center"
                 IsHitTestVisible="False"
                 Orientation="Horizontal"

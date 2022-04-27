@@ -10,6 +10,7 @@
                 <ResourceDictionary Source="ms-appx:///Styles/Style.Overwrite.xaml" />
                 <ResourceDictionary Source="ms-appx:///Styles/Style.Dimensions.xaml" />
                 <ResourceDictionary Source="ms-appx:///Controls/Player/BiliPlayerTransportControls/BiliPlayerTransportControls.xaml" />
+                <ResourceDictionary Source="ms-appx:///Controls/Common/VideoCard/VideoCard.xaml" />
             </ResourceDictionary.MergedDictionaries>
             <ResourceDictionary.ThemeDictionaries>
                 <ResourceDictionary x:Key="Light" Source="ms-appx:///Styles/Theme.Light.xaml" />
@@ -33,12 +34,13 @@
             <converter:EpisodeTitleConverter x:Key="EpisodeTitleConverter" />
             <converter:EpisodeCoverConverter x:Key="EpisodeCoverConverter" />
             <converter:SeasonCoverConverter x:Key="SeasonCoverConverter" />
-            <converter:DanmakuStyleConverter x:Key="DanmakuStyleConverter" />
             <converter:ColorConverter x:Key="ColorConverter" IsBrush="False" />
             <converter:ColorConverter x:Key="BrushConverter" IsBrush="True" />
             <converter:FavoriteTypeConverter x:Key="FavoriteTypeConverter" />
             <converter:DanmakuLocationConverter x:Key="DanmakuLocationConverter" />
             <converter:NumberToVisibilityConverter x:Key="NumberToVisibilityConverter" />
+            <converter:SubtitleConvertTypeConverter x:Key="SubtitleConvertTypeConverter" />
+            <converter:SmallImageConverter x:Key="SmallImageConverter" />
         </ResourceDictionary>
     </Application.Resources>
 </Application>

@@ -1,8 +1,10 @@
 ﻿// Copyright (c) Richasy. All rights reserved.
 
 using System;
+using System.Collections.ObjectModel;
 using ReactiveUI.Fody.Helpers;
 using Richasy.Bili.Controller.Uwp;
+using Richasy.Bili.Models.App;
 using Richasy.Bili.Models.BiliBili;
 using Richasy.Bili.Toolkit.Interfaces;
 
@@ -37,6 +39,7 @@ namespace Richasy.Bili.ViewModels.Uwp
         private readonly BiliController _controller;
         private readonly IResourceToolkit _resourceToolkit;
         private readonly INumberToolkit _numberToolkit;
+        private readonly IFileToolkit _fileToolkit;
         private MyInfo _myInfo;
 
         /// <summary>
@@ -48,6 +51,11 @@ namespace Richasy.Bili.ViewModels.Uwp
         /// 登录用户Id.
         /// </summary>
         public int? Mid => _myInfo?.Mid;
+
+        /// <summary>
+        /// 固定条目集合.
+        /// </summary>
+        public ObservableCollection<FixedItem> FixedItemCollection { get; }
 
         /// <summary>
         /// 当前视图模型状态.
@@ -120,5 +128,11 @@ namespace Richasy.Bili.ViewModels.Uwp
         /// </summary>
         [Reactive]
         public bool IsShowUnreadMessage { get; set; }
+
+        /// <summary>
+        /// 是否显示固定的内容.
+        /// </summary>
+        [Reactive]
+        public bool IsShowFixedItem { get; set; }
     }
 }

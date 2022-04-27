@@ -52,6 +52,25 @@
         <uap5:Extension Category="windows.startupTask">
           <uap5:StartupTask DisplayName="ms-resource:AppName" Enabled="false" TaskId="Richasy.Bili"/>
         </uap5:Extension>
+        <uap5:Extension Category="windows.appExecutionAlias"
+                        Executable="Richasy.Bili.App.exe"
+                        EntryPoint="Richasy.Bili.App.App">
+          <uap5:AppExecutionAlias>
+            <uap5:ExecutionAlias Alias="Bili.exe" />
+          </uap5:AppExecutionAlias>
+        </uap5:Extension>
+        <uap:Extension Category="windows.protocol" EntryPoint="App.App">
+          <uap:Protocol Name="richasy-bili">
+            <uap:DisplayName>哔哩</uap:DisplayName>
+            <uap:Logo>Assets\Bili_rgba_80.png</uap:Logo>
+          </uap:Protocol>
+        </uap:Extension>
+        <Extension Category="windows.backgroundTasks" EntryPoint="Richasy.Bili.Tasks.DynamicNotifyTask">
+          <BackgroundTasks>
+            <Task Type="timer"/>
+            <Task Type="pushNotification"/>
+          </BackgroundTasks>
+        </Extension>
       </Extensions>
     </Application>
   </Applications>
@@ -59,5 +78,6 @@
   <Capabilities>
     <Capability Name="internetClient" />
     <uap3:Capability Name="backgroundMediaPlayback"/>
+    <uap:Capability Name="picturesLibrary"/>
   </Capabilities>
 </Package>

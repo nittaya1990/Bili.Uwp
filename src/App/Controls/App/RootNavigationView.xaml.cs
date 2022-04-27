@@ -6,6 +6,8 @@ using System.Linq;
 using Richasy.Bili.App.Pages;
 using Richasy.Bili.App.Pages.Overlay;
 using Richasy.Bili.App.Resources.Extension;
+using Richasy.Bili.Models.App;
+using Richasy.Bili.Models.App.Other;
 using Richasy.Bili.Models.Enums;
 using Richasy.Bili.ViewModels.Uwp;
 using Windows.UI.Xaml;
@@ -25,6 +27,9 @@ namespace Richasy.Bili.App.Controls
         public static readonly DependencyProperty ViewModelProperty =
             DependencyProperty.Register(nameof(ViewModel), typeof(AppViewModel), typeof(RootNavigationView), new PropertyMetadata(AppViewModel.Instance));
 
+        private readonly AccountViewModel _accountViewModel = AccountViewModel.Instance;
+        private bool _isFirstLoaded;
+
         /// <summary>
         /// Initializes a new instance of the <see cref="RootNavigationView"/> class.
         /// </summary>
@@ -34,6 +39,11 @@ namespace Richasy.Bili.App.Controls
             Loaded += OnLoaded;
             Unloaded += OnUnloaded;
         }
+
+        /// <summary>
+        /// 在刚加在首页时发生.
+        /// </summary>
+        public event EventHandler FirstLoaded;
 
         /// <summary>
         /// 视图模型.
@@ -62,9 +72,7 @@ namespace Richasy.Bili.App.Controls
         }
 
         private void OnRequestOverlayNavigation(object sender, object e)
-        {
-            CheckOverlayContentNavigation(e);
-        }
+            => CheckOverlayContentNavigation(e);
 
         private void OnAppViewModelPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
@@ -144,11 +152,14 @@ namespace Richasy.Bili.App.Controls
                 case PageIds.Live:
                     pageType = typeof(LivePage);
                     break;
-                case PageIds.DynamicFeed:
+                case PageIds.Dynamic:
                     pageType = typeof(DynamicFeedPage);
                     break;
                 case PageIds.Help:
                     pageType = typeof(HelpPage);
+                    break;
+                case PageIds.Toolbox:
+                    pageType = typeof(ToolboxPage);
                     break;
                 case PageIds.Settings:
                     pageType = typeof(SettingPage);
@@ -221,6 +232,12 @@ namespace Richasy.Bili.App.Controls
                 case PageIds.Message:
                     pageType = typeof(MessagePage);
                     break;
+                case PageIds.LiveAreaDetail:
+                    pageType = typeof(LiveAreaDetailPage);
+                    break;
+                case PageIds.MyFollows:
+                    pageType = typeof(MyFollowsPage);
+                    break;
                 default:
                     break;
             }
@@ -243,7 +260,64 @@ namespace Richasy.Bili.App.Controls
 
         private void OnMainFrameNavigated(object sender, Windows.UI.Xaml.Navigation.NavigationEventArgs e)
         {
+            if (!_isFirstLoaded)
+            {
+                FirstLoaded?.Invoke(this, EventArgs.Empty);
+                _isFirstLoaded = true;
+            }
+
             RefreshButton.Visibility = MainFrame.Content is IRefreshPage ? Visibility.Visible : Visibility.Collapsed;
+
+            if (MainFrame.Content is DynamicFeedPage)
+            {
+                DynamicNavView.Visibility = Visibility.Visible;
+                DynamicNavView.SelectedItem = DynamicModuleViewModel.Instance.IsVideo ? VideoDynamicItem : AllDynamicItem;
+            }
+            else
+            {
+                DynamicNavView.Visibility = Visibility.Collapsed;
+            }
+        }
+
+        private void OnDynamicNavViewItemInvoked(Microsoft.UI.Xaml.Controls.NavigationView sender, Microsoft.UI.Xaml.Controls.NavigationViewItemInvokedEventArgs args)
+            => DynamicModuleViewModel.Instance.IsVideo = args.InvokedItemContainer.Equals(VideoDynamicItem);
+
+        private async void OnFixedItemClickAsync(object sender, RoutedEventArgs e)
+        {
+            var context = (sender as FrameworkElement).DataContext as FixedItem;
+            switch (context.Type)
+            {
+                case Models.Enums.App.FixedType.Publisher:
+                    await UserView.Instance.ShowAsync(Convert.ToInt32(context.Id));
+                    break;
+                case Models.Enums.App.FixedType.Pgc:
+                    {
+                        var record = new CurrentPlayingRecord("0", Convert.ToInt32(context.Id), VideoType.Pgc)
+                        {
+                            Title = context.Title,
+                        };
+                        AppViewModel.Instance.OpenPlayer(record);
+                    }
+
+                    break;
+                case Models.Enums.App.FixedType.Video:
+                    {
+                        var record = new CurrentPlayingRecord(context.Id, 0, VideoType.Video);
+                        AppViewModel.Instance.OpenPlayer(record);
+                    }
+
+                    break;
+
+                case Models.Enums.App.FixedType.Live:
+                    {
+                        var record = new CurrentPlayingRecord(context.Id, 0, VideoType.Live);
+                        AppViewModel.Instance.OpenPlayer(record);
+                    }
+
+                    break;
+                default:
+                    break;
+            }
         }
     }
 }

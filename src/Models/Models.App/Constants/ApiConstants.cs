@@ -27,7 +27,7 @@ namespace Richasy.Bili.Models.App.Constants
             /// <summary>
             /// 登录.
             /// </summary>
-            public const string Login = _passBase + "/api/v3/oauth2/login";
+            public const string Login = _passBase + "/x/passport-login/oauth2/login";
 
             /// <summary>
             /// 刷新令牌信息.
@@ -71,6 +71,8 @@ namespace Richasy.Bili.Models.App.Constants
             /// 用户空间.
             /// </summary>
             public const string Space = _appBase + "/x/v2/space";
+
+            public const string SpaceVideoSearch = _grpcBase + "/bilibili.app.interface.v1.Space/SearchArchive";
 
             /// <summary>
             /// 用户空间中视频的增量请求.
@@ -116,6 +118,16 @@ namespace Richasy.Bili.Models.App.Constants
             /// 获取关注列表.
             /// </summary>
             public const string Follows = _apiBase + "/x/relation/followings";
+
+            /// <summary>
+            /// 获取我的关注分组.
+            /// </summary>
+            public const string MyFollowingTags = _apiBase + "/x/relation/tags";
+
+            /// <summary>
+            /// 获取我的关注分组详情.
+            /// </summary>
+            public const string MyFollowingTagDetail = _apiBase + "/x/relation/tag";
 
             /// <summary>
             /// 获取稍后再看列表.
@@ -226,6 +238,11 @@ namespace Richasy.Bili.Models.App.Constants
             /// 获取回复我的消息.
             /// </summary>
             public const string MessageReply = _apiBase + "/x/msgfeed/reply";
+
+            /// <summary>
+            /// 更新PGC收藏状态.
+            /// </summary>
+            public const string UpdatePgcStatus = _apiBase + "/pgc/app/follow/status/update";
         }
 
         public static class Partition
@@ -292,6 +309,11 @@ namespace Richasy.Bili.Models.App.Constants
             public const string LiveFeed = _liveBase + "/xlive/app-interface/v2/index/feed";
 
             /// <summary>
+            /// 直播分区.
+            /// </summary>
+            public const string LiveArea = _liveBase + "/xlive/app-interface/v2/index/getAreaList";
+
+            /// <summary>
             /// 直播间详情.
             /// </summary>
             public const string RoomDetail = _liveBase + "/xlive/app-room/v1/index/getInfoByRoom";
@@ -315,6 +337,16 @@ namespace Richasy.Bili.Models.App.Constants
             /// 发送消息.
             /// </summary>
             public const string SendMessage = _liveBase + "/api/sendmsg";
+
+            /// <summary>
+            /// 分区详情.
+            /// </summary>
+            public const string AreaDetail = _liveBase + "/xlive/app-interface/v2/second/getList";
+
+            /// <summary>
+            /// 移动应用上的播放信息.
+            /// </summary>
+            public const string AppPlayInformation = _liveBase + "/xlive/app-room/v2/index/getRoomPlayInfo";
         }
 
         public static class Article
@@ -353,16 +385,6 @@ namespace Richasy.Bili.Models.App.Constants
             public const string PageDetail = _apiBase + "/pgc/page";
 
             /// <summary>
-            /// 剧集详情.
-            /// </summary>
-            public const string SeasonDetail = _apiBase + "/pgc/view/v2/app/season";
-
-            /// <summary>
-            /// 剧集播放信息.
-            /// </summary>
-            public const string PlayInformation = _apiBase + "/pgc/player/web/playurl";
-
-            /// <summary>
             /// 分集交互信息.
             /// </summary>
             public const string EpisodeInteraction = _apiBase + "/pgc/season/episode/community";
@@ -396,6 +418,32 @@ namespace Richasy.Bili.Models.App.Constants
             /// 播放列表.
             /// </summary>
             public const string PlayList = _apiBase + "/pgc/web/playlist";
+
+            /// <summary>
+            /// 剧集详情.
+            /// </summary>
+            /// <param name="proxy">代理服务器地址.</param>
+            /// <returns>API地址.</returns>
+            public static string SeasonDetail(string proxy = "")
+            {
+                var prefix = string.IsNullOrEmpty(proxy)
+                    ? _apiBase
+                    : proxy;
+                return prefix.TrimEnd('/') + "/pgc/view/v2/app/season";
+            }
+
+            /// <summary>
+            /// 剧集播放信息.
+            /// </summary>
+            /// <param name="proxy">代理服务器地址.</param>
+            /// <returns>API地址.</returns>
+            public static string PlayInformation(string proxy = "")
+            {
+                var prefix = string.IsNullOrEmpty(proxy)
+                    ? _apiBase
+                    : proxy;
+                return prefix.TrimEnd('/') + "/pgc/player/web/playurl";
+            }
         }
 
         public static class Video
@@ -403,7 +451,7 @@ namespace Richasy.Bili.Models.App.Constants
             /// <summary>
             /// 视频详情.
             /// </summary>
-            public const string Detail = _appBase + "/bilibili.app.view.v1.View/View";
+            public const string Detail = _grpcBase + "/bilibili.app.view.v1.View/View";
 
             /// <summary>
             /// 在线观看人数.
@@ -469,6 +517,11 @@ namespace Richasy.Bili.Models.App.Constants
             /// 获取互动视频选项.
             /// </summary>
             public const string InteractionEdge = _apiBase + "/x/stein/edgeinfo_v2";
+
+            /// <summary>
+            /// 获取视频参数.
+            /// </summary>
+            public const string Stat = _apiBase + "/x/web-interface/archive/stat";
         }
 
         public static class Search
@@ -484,14 +537,27 @@ namespace Richasy.Bili.Models.App.Constants
             public const string ComprehensiveSearch = _appBase + "/x/v2/search";
 
             /// <summary>
-            /// 子模块搜索，包括PGC，用户和文章.
-            /// </summary>
-            public const string SubModuleSearch = _appBase + "/x/v2/search/type";
-
-            /// <summary>
             /// 直播搜索.
             /// </summary>
             public const string LiveModuleSearch = _appBase + "/x/v2/search/live";
+
+            /// <summary>
+            /// 搜索建议.
+            /// </summary>
+            public const string Suggestion = _grpcBase + "/bilibili.app.interface.v1.Search/Suggest3";
+
+            /// <summary>
+            /// 子模块搜索，包括PGC，用户和文章.
+            /// </summary>
+            /// <param name="proxy">代理服务器地址.</param>
+            /// <returns>API地址.</returns>
+            public static string SubModuleSearch(string proxy = "")
+            {
+                var prefix = string.IsNullOrEmpty(proxy)
+                    ? _appBase
+                    : proxy;
+                return prefix.TrimEnd('/') + "/x/v2/search/type";
+            }
         }
 
         public static class Community

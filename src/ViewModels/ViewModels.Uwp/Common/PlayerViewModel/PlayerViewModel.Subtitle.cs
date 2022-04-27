@@ -25,6 +25,11 @@ namespace Richasy.Bili.ViewModels.Uwp
 
                 try
                 {
+                    SubtitleIndexCollection.Clear();
+                    _subtitleTimer.Stop();
+                    _subtitleList.Clear();
+                    IsShowSubtitle = false;
+                    CurrentSubtitle = string.Empty;
                     var index = await Controller.GetSubtitleIndexAsync(aid, cid);
                     if (index != null && index.Subtitles != null && index.Subtitles.Count > 0)
                     {

@@ -7,7 +7,6 @@
     xmlns:loc="using:Richasy.Bili.Locator.Uwp"
     xmlns:local="using:Richasy.Bili.App.Pages"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    xmlns:muxc="using:Microsoft.UI.Xaml.Controls"
     mc:Ignorable="d">
 
     <Page.Resources>
@@ -36,6 +35,9 @@
                 <controls:ThemeSettingSection />
                 <controls:StartupSettingSection />
                 <controls:LoggerSettingSection />
+                <controls:CacheSettingSection />
+                <controls:InitialCheckSection />
+                <controls:NotificationSettingSection />
 
                 <TextBlock
                     Style="{StaticResource BodyTextBlockStyle}"
@@ -44,7 +46,8 @@
                     Text="{loc:LocaleLocator Name=Player}" />
                 <controls:PlayerModeSettingSection />
                 <controls:PlayerControlSettingSection />
-                <controls:MTCSettingSection />
+                <controls:ScreenshotSettingSection />
+                <controls:RoamingSettingSection />
                 <StackPanel
                     Margin="0,12,0,0"
                     HorizontalAlignment="Left"
@@ -55,6 +58,14 @@
                         <Run Text="{x:Bind ViewModel.Version}" />
                     </TextBlock>
                     <TextBlock Style="{StaticResource TipTextStyle}" Text="{loc:LocaleLocator Name=License}" />
+                    <HyperlinkButton
+                        HorizontalAlignment="Left"
+                        Content="{loc:LocaleLocator Name=StoreComment}"
+                        NavigateUri="ms-windows-store://review/?ProductId=9MVN4NSLT150" />
+                    <HyperlinkButton
+                        HorizontalAlignment="Left"
+                        Content="{loc:LocaleLocator Name=PublisherApp}"
+                        NavigateUri="ms-windows-store://publisher/?name=云之幻" />
                 </StackPanel>
             </StackPanel>
         </ScrollViewer>

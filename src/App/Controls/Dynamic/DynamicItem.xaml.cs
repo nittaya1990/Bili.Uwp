@@ -2,8 +2,9 @@
 
 using System;
 using System.Linq;
+using System.Threading.Tasks;
 using Richasy.Bili.Locator.Uwp;
-using Richasy.Bili.Models.App.Constants;
+using Richasy.Bili.Models.Enums.Bili;
 using Richasy.Bili.Toolkit.Interfaces;
 using Richasy.Bili.ViewModels.Uwp;
 using Windows.ApplicationModel.DataTransfer;
@@ -11,7 +12,6 @@ using Windows.Foundation;
 using Windows.Storage.Streams;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
-using Windows.UI.Xaml.Media;
 
 namespace Richasy.Bili.App.Controls
 {
@@ -37,7 +37,7 @@ namespace Richasy.Bili.App.Controls
         /// </summary>
         public DynamicItem()
         {
-            this.InitializeComponent();
+            InitializeComponent();
             Loaded += OnLoaded;
         }
 
@@ -62,14 +62,9 @@ namespace Richasy.Bili.App.Controls
         /// <inheritdoc/>
         public Size GetHolderSize()
         {
-            if (Orientation == Orientation.Horizontal)
-            {
-                return new Size(double.PositiveInfinity, 180);
-            }
-            else
-            {
-                return new Size(320, 248);
-            }
+            return Orientation == Orientation.Horizontal
+                ? new Size(double.PositiveInfinity, 180)
+                : new Size(320, 248);
         }
 
         private static void OnOrientationChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
@@ -95,42 +90,23 @@ namespace Richasy.Bili.App.Controls
                     instance.UserAvatar.UserName = userModule.Author.Name;
                     instance.UserNameBlock.Text = userModule.Author.Name;
                     instance.DateBlock.Text = userModule.PtimeLabelText;
+                    instance.UserAvatar.DataContext = new UserViewModel(userModule.Author.Name, userModule.Author.Face, Convert.ToInt32(userModule.Mid));
                 }
 
                 if (descModule != null)
                 {
-                    if (string.IsNullOrEmpty(descModule.Text.Trim()))
-                    {
-                        instance.MainContainer.Margin = new Thickness(0, -36, 0, 0);
-                    }
-                    else
-                    {
-                        instance.MainContainer.Margin = new Thickness(0);
-                    }
-
-                    instance.DescriptionBlock.Text = descModule.Text.Trim();
+                    instance.MainContainer.Margin = string.IsNullOrEmpty(descModule.Text.Trim())
+                        ? new Thickness(0, -40, 0, 0)
+                        : new Thickness(0, -4, 0, 0);
+                    instance.DescriptionBlock.DynamicDescription = descModule;
                 }
                 else
                 {
-                    instance.MainContainer.Margin = new Thickness(0, -36, 0, 0);
-                    instance.DescriptionBlock.Text = string.Empty;
+                    instance.MainContainer.Margin = new Thickness(0, -40, 0, 0);
+                    instance.DescriptionBlock.Reset();
                 }
 
-                if (mainModule != null)
-                {
-                    if (mainModule.Type == Bilibili.App.Dynamic.V2.ModuleDynamicType.MdlDynPgc)
-                    {
-                        instance.AddViewLaterButton.IsEnabled = false;
-                        instance.MainContentPresenter.Content = new SeasonViewModel(mainModule.DynPgc);
-                        instance.MainContentPresenter.ContentTemplate = instance.PgcTemplate;
-                    }
-                    else if (mainModule.Type == Bilibili.App.Dynamic.V2.ModuleDynamicType.MdlDynArchive)
-                    {
-                        instance.AddViewLaterButton.IsEnabled = !mainModule.DynArchive.IsPGC;
-                        instance.MainContentPresenter.Content = new VideoViewModel(mainModule.DynArchive);
-                        instance.MainContentPresenter.ContentTemplate = instance.VideoTemplate;
-                    }
-                }
+                instance.Presenter.Data = data;
 
                 if (dataModule != null)
                 {
@@ -142,40 +118,75 @@ namespace Richasy.Bili.App.Controls
             }
         }
 
-        private void OnCardClick(object sender, RoutedEventArgs e)
-        {
-            OpenPlayer();
-        }
+        private async void OnCardClickAsync(object sender, RoutedEventArgs e)
+            => await JumpAsync();
 
         private void OnLoaded(object sender, RoutedEventArgs e)
-        {
-            CheckOrientation();
-        }
+            => CheckOrientation();
 
         private void CheckOrientation()
         {
-            var child = VisualTreeHelper.GetChild(MainContentPresenter, 0);
-            if (child is IDynamicLayoutItem item)
-            {
-                item.Orientation = Orientation;
-            }
+            Presenter.ChangeOrientation(Orientation);
         }
 
-        private void OnReplyButtonClick(object sender, RoutedEventArgs e)
+        private async void OnReplyButtonClickAsync(object sender, RoutedEventArgs e)
         {
-            OpenPlayer();
-            PlayerViewModel.Instance.InitializeSection = AppConstants.ReplySection;
+            var type = ReplyType.None;
+            switch (Data.CardType)
+            {
+                case Bilibili.App.Dynamic.V2.DynamicType.Forward:
+                case Bilibili.App.Dynamic.V2.DynamicType.Word:
+                case Bilibili.App.Dynamic.V2.DynamicType.Live:
+                    type = ReplyType.Dynamic;
+                    break;
+                case Bilibili.App.Dynamic.V2.DynamicType.Draw:
+                    type = ReplyType.Album;
+                    break;
+                case Bilibili.App.Dynamic.V2.DynamicType.Av:
+                case Bilibili.App.Dynamic.V2.DynamicType.Pgc:
+                case Bilibili.App.Dynamic.V2.DynamicType.UgcSeason:
+                case Bilibili.App.Dynamic.V2.DynamicType.Medialist:
+                    type = ReplyType.Video;
+                    break;
+                case Bilibili.App.Dynamic.V2.DynamicType.Courses:
+                case Bilibili.App.Dynamic.V2.DynamicType.CoursesSeason:
+                    type = ReplyType.Course;
+                    break;
+                case Bilibili.App.Dynamic.V2.DynamicType.Article:
+                    type = ReplyType.Article;
+                    break;
+                case Bilibili.App.Dynamic.V2.DynamicType.Music:
+                    type = ReplyType.Music;
+                    break;
+                default:
+                    break;
+            }
+
+            if (type == ReplyType.None)
+            {
+                var resourceToolkit = ServiceLocator.Instance.GetService<IResourceToolkit>();
+                AppViewModel.Instance.ShowTip(resourceToolkit.GetLocaleString(Models.Enums.LanguageNames.NotSupportReplyType), Models.Enums.App.InfoType.Warning);
+                return;
+            }
+
+            var id = type == ReplyType.Dynamic ? Data.Extend.DynIdStr : Data.Extend.BusinessId;
+            ReplyModuleViewModel.Instance.SetInformation(Convert.ToInt64(id), type, Bilibili.Main.Community.Reply.V1.Mode.MainListTime);
+            await ReplyDetailView.Instance.ShowAsync(ReplyModuleViewModel.Instance);
         }
 
-        private void OpenPlayer()
+        private async Task JumpAsync()
         {
-            if (MainContentPresenter.Content is VideoViewModel videoVM)
+            var vm = Presenter.GetPlayViewModel();
+            if (vm != null)
             {
-                AppViewModel.Instance.OpenPlayer(videoVM);
+                AppViewModel.Instance.OpenPlayer(vm);
+                return;
             }
-            else if (MainContentPresenter.Content is SeasonViewModel seasonVM)
+
+            vm = Presenter.GetArticleViewModel();
+            if (vm != null)
             {
-                AppViewModel.Instance.OpenPlayer(seasonVM);
+                await ReaderView.Instance.ShowAsync(vm as ArticleViewModel);
             }
         }
 
@@ -201,7 +212,8 @@ namespace Richasy.Bili.App.Controls
 
         private async void OnAddToViewLaterItemClickAsync(object sender, RoutedEventArgs e)
         {
-            if (MainContentPresenter.Content is VideoViewModel videoVM)
+            var vm = Presenter.GetPlayViewModel();
+            if (vm is VideoViewModel videoVM)
             {
                 await ViewLaterViewModel.Instance.AddAsync(videoVM);
             }
@@ -224,7 +236,7 @@ namespace Richasy.Bili.App.Controls
             var descModule = Data.Modules.ToList().Where(p => p.ModuleType == Bilibili.App.Dynamic.V2.DynModuleType.ModuleDesc).FirstOrDefault();
             if (mainModule != null)
             {
-                request.Data.SetText(DescriptionBlock.Text);
+                request.Data.SetText(descModule?.ModuleDesc?.Text ?? string.Empty);
                 if (mainModule.ModuleItemCase == Bilibili.App.Dynamic.V2.ModuleDynamic.ModuleItemOneofCase.DynPgc)
                 {
                     var pgc = mainModule.DynPgc;
@@ -249,7 +261,24 @@ namespace Richasy.Bili.App.Controls
                 request.Data.SetWebLink(new Uri(url));
             }
 
-            request.Data.SetBitmap(RandomAccessStreamReference.CreateFromUri(new Uri(coverUrl)));
+            if (!string.IsNullOrEmpty(coverUrl))
+            {
+                request.Data.SetBitmap(RandomAccessStreamReference.CreateFromUri(new Uri(coverUrl)));
+            }
+        }
+
+        private async void OnAvatarClickAsync(object sender, EventArgs e)
+        {
+            if ((sender as FrameworkElement).DataContext is UserViewModel data)
+            {
+                await UserView.Instance.ShowAsync(data);
+            }
+        }
+
+        private void OnMoreFlyoutOpened(object sender, object e)
+        {
+            var vm = Presenter.GetPlayViewModel();
+            AddViewLaterButton.IsEnabled = vm is VideoViewModel;
         }
     }
 }

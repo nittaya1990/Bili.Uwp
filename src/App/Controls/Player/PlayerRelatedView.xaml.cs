@@ -17,15 +17,13 @@ namespace Richasy.Bili.App.Controls
         /// </summary>
         public PlayerRelatedView()
         {
-            this.InitializeComponent();
-            this.Loaded += OnLoaded;
-            this.ViewModel.Loaded += OnViewModelLoaded;
+            InitializeComponent();
+            Loaded += OnLoaded;
+            ViewModel.Loaded += OnViewModelLoaded;
         }
 
         private void OnViewModelLoaded(object sender, EventArgs e)
-        {
-            InitializeLayoutAsync();
-        }
+            => InitializeLayoutAsync();
 
         private void OnLoaded(object sender, RoutedEventArgs e)
         {
@@ -46,6 +44,10 @@ namespace Richasy.Bili.App.Controls
                 {
                     InitializeSelectedSection();
                 }
+                else if (ViewModel.IsShowViewLater)
+                {
+                    Nav.SelectedItem = ViewLaterItem;
+                }
                 else if (ViewModel.IsPgc && ViewModel.IsCurrentEpisodeInPgcSection)
                 {
                     Nav.SelectedItem = SectionItem;
@@ -53,6 +55,10 @@ namespace Richasy.Bili.App.Controls
                 else if (ViewModel.IsShowParts)
                 {
                     Nav.SelectedItem = PartsItem;
+                }
+                else if (ViewModel.IsShowUgcSection)
+                {
+                    Nav.SelectedItem = UgcEpisodeItem;
                 }
                 else if (ViewModel.IsShowEpisode)
                 {
@@ -111,9 +117,21 @@ namespace Richasy.Bili.App.Controls
 
         private async void InitializeLayoutAsync()
         {
+            if (ViewModel.IsShowViewLater && ViewLaterVideoView != null)
+            {
+                ViewLaterVideoView.Visibility = Nav.SelectedItem == ViewLaterItem ?
+                Visibility.Visible : Visibility.Collapsed;
+            }
+
             if (ViewModel.IsShowRelatedVideos && RelatedVideoView != null)
             {
                 RelatedVideoView.Visibility = Nav.SelectedItem == RelatedViedeosItem ?
+                Visibility.Visible : Visibility.Collapsed;
+            }
+
+            if (ViewModel.IsShowUgcSection && UgcEpisodeView != null)
+            {
+                UgcEpisodeView.Visibility = Nav.SelectedItem == UgcEpisodeItem ?
                 Visibility.Visible : Visibility.Collapsed;
             }
 
@@ -165,6 +183,9 @@ namespace Richasy.Bili.App.Controls
             {
                 case AppConstants.ReplySection:
                     Nav.SelectedItem = ReplyItem;
+                    break;
+                case AppConstants.ViewLaterSection:
+                    Nav.SelectedItem = ViewLaterItem;
                     break;
                 default:
                     break;

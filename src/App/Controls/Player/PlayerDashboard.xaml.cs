@@ -1,10 +1,7 @@
 ﻿// Copyright (c) Richasy. All rights reserved.
 
 using System;
-using Richasy.Bili.Locator.Uwp;
-using Richasy.Bili.Toolkit.Interfaces;
 using Richasy.Bili.ViewModels.Uwp;
-using Windows.ApplicationModel.DataTransfer;
 using Windows.UI.Xaml;
 
 namespace Richasy.Bili.App.Controls
@@ -15,6 +12,7 @@ namespace Richasy.Bili.App.Controls
     public sealed partial class PlayerDashboard : PlayerComponent
     {
         private bool _isLikeHoldCompleted;
+        private bool _isLikeHoldSuspend;
         private PgcDetailView _detailView;
 
         /// <summary>
@@ -22,7 +20,7 @@ namespace Richasy.Bili.App.Controls
         /// </summary>
         public PlayerDashboard()
         {
-            this.InitializeComponent();
+            InitializeComponent();
         }
 
         private async void OnLikeButtonHoldingCompletedAsync(object sender, System.EventArgs e)
@@ -58,9 +56,10 @@ namespace Richasy.Bili.App.Controls
 
         private async void OnLikeButtonClickAsync(object sender, RoutedEventArgs e)
         {
-            if (_isLikeHoldCompleted)
+            if (_isLikeHoldCompleted || _isLikeHoldSuspend)
             {
                 _isLikeHoldCompleted = false;
+                _isLikeHoldSuspend = false;
                 return;
             }
 
@@ -110,5 +109,21 @@ namespace Richasy.Bili.App.Controls
                 await ViewModel.LoadFavoritesAsync();
             }
         }
+
+        private void OnLikeButtonHoldingSuspend(object sender, EventArgs e)
+        {
+            _isLikeHoldSuspend = true;
+        }
+
+        private async void OnLiveOnlyAudioToggledAsync(object sender, RoutedEventArgs e)
+        {
+            if (ViewModel.IsLive && ViewModel.IsLiveAudioOnly != LiveAudioOnlySwitch.IsOn)
+            {
+                await ViewModel.ToggleLiveAudioAsync(LiveAudioOnlySwitch.IsOn);
+            }
+        }
+
+        private async void OnFixButtonClickAsync(object sender, RoutedEventArgs e)
+            => await ViewModel.ToggleFixStateAsync();
     }
 }

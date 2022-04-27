@@ -2,10 +2,13 @@
 
 using System;
 using ReactiveUI.Fody.Helpers;
+using Richasy.Bili.Controller.Uwp;
+using Richasy.Bili.Controller.Uwp.Interfaces;
 using Richasy.Bili.Models.App.Args;
 using Richasy.Bili.Models.Enums;
 using Richasy.Bili.Toolkit.Interfaces;
 using Windows.System.Display;
+using Windows.UI.Core;
 using Windows.UI.Xaml;
 
 namespace Richasy.Bili.ViewModels.Uwp
@@ -17,7 +20,9 @@ namespace Richasy.Bili.ViewModels.Uwp
     {
         private readonly IResourceToolkit _resourceToolkit;
         private readonly ISettingsToolkit _settingToolkit;
+        private readonly ILoggerModule _loggerModule;
         private readonly DisplayRequest _displayRequest;
+        private readonly BiliController _controller;
 
         private bool? _isWide;
 
@@ -42,9 +47,29 @@ namespace Richasy.Bili.ViewModels.Uwp
         public event EventHandler<AppTipNotificationEventArgs> RequestShowTip;
 
         /// <summary>
+        /// 请求显示升级提示.
+        /// </summary>
+        public event EventHandler<UpdateEventArgs> RequestShowUpdateDialog;
+
+        /// <summary>
+        /// 请求进行之前的播放.
+        /// </summary>
+        public event EventHandler RequestContinuePlay;
+
+        /// <summary>
+        /// 请求显示图片列表.
+        /// </summary>
+        public event EventHandler<ShowImageEventArgs> RequestShowImages;
+
+        /// <summary>
         /// <see cref="AppViewModel"/>的单例.
         /// </summary>
         public static AppViewModel Instance { get; } = new Lazy<AppViewModel>(() => new AppViewModel()).Value;
+
+        /// <summary>
+        /// UI调度器.
+        /// </summary>
+        public CoreDispatcher Dispatcher { get; set; }
 
         /// <summary>
         /// 当前主视图中的页面标识.
@@ -69,6 +94,12 @@ namespace Richasy.Bili.ViewModels.Uwp
         /// </summary>
         [Reactive]
         public bool IsNavigatePaneOpen { get; set; }
+
+        /// <summary>
+        /// 是否可以显示返回首页按钮.
+        /// </summary>
+        [Reactive]
+        public bool CanShowHomeButton { get; set; }
 
         /// <summary>
         /// 页面标题文本.

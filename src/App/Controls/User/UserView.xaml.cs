@@ -4,7 +4,6 @@ using System;
 using System.Threading.Tasks;
 using Richasy.Bili.ViewModels.Uwp;
 using Windows.UI.Xaml;
-using Windows.UI.Xaml.Controls;
 
 namespace Richasy.Bili.App.Controls
 {
@@ -24,7 +23,7 @@ namespace Richasy.Bili.App.Controls
         /// </summary>
         protected UserView()
         {
-            this.InitializeComponent();
+            InitializeComponent();
         }
 
         /// <summary>
@@ -77,36 +76,30 @@ namespace Richasy.Bili.App.Controls
                 {
                     await ViewModel.InitializeUserDetailAsync();
                 }
-                else
-                {
-                    ViewModel.Active();
-                }
             }
-            else
-            {
-                ViewModel.Active();
-            }
+
+            ViewModel.Active();
         }
 
         private async void OnRefreshButtonClickAsync(object sender, RoutedEventArgs e)
         {
-            await ViewModel.InitializeUserDetailAsync();
+            if (ViewModel.IsSearching)
+            {
+                await ViewModel.InitializeSearchResultAsync();
+            }
+            else
+            {
+                await ViewModel.InitializeUserDetailAsync();
+            }
         }
 
         private async void OnVideoViewRequestLoadMoreAsync(object sender, System.EventArgs e)
-        {
-            await ViewModel.DeltaRequestVideoAsync();
-        }
+            => await ViewModel.DeltaRequestVideoAsync();
 
-        private void OnVideoItemClick(object sender, VideoViewModel e)
-        {
-            this.Container.Hide();
-        }
+        private void OnVideoCardClick(object sender, VideoViewModel e) => Container.Hide();
 
         private async void OnFollowButtonClickAsync(object sender, RoutedEventArgs e)
-        {
-            await ViewModel.ToggleFollowStateAsync();
-        }
+            => await ViewModel.ToggleFollowStateAsync();
 
         private async void OnFansButtonClickAsync(object sender, RoutedEventArgs e)
         {
@@ -121,8 +114,21 @@ namespace Richasy.Bili.App.Controls
         }
 
         private void OnClosed(object sender, System.EventArgs e)
-        {
-            ViewModel.Deactive();
-        }
+            => ViewModel.Deactive();
+
+        private async void OnFixButtonClickAsync(object sender, RoutedEventArgs e)
+            => await ViewModel.ToggleFixStateAsync();
+
+        private void OnSearchButtonClick(object sender, RoutedEventArgs e)
+            => ViewModel.IsSearching = true;
+
+        private void OnExitSearchButtonClick(object sender, RoutedEventArgs e)
+            => ViewModel.IsSearching = false;
+
+        private async void OnSearchViewRequestLoadMoreAsync(object sender, EventArgs e)
+            => await ViewModel.DeltaRequestSearchAsync();
+
+        private async void OnSearchBoxQuerySubmittedAsync(Windows.UI.Xaml.Controls.AutoSuggestBox sender, Windows.UI.Xaml.Controls.AutoSuggestBoxQuerySubmittedEventArgs args)
+            => await ViewModel.InitializeSearchResultAsync();
     }
 }

@@ -1,17 +1,22 @@
 ﻿// Copyright (c) Richasy. All rights reserved.
 
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Net;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using Bilibili.App.View.V1;
+using Richasy.Bili.Models.App;
 using Richasy.Bili.Models.App.Constants;
+using Richasy.Bili.Models.App.Other;
 using Richasy.Bili.Models.BiliBili;
 using Richasy.Bili.Models.Enums;
+using Richasy.Bili.Models.Enums.App;
 using Windows.Media.Playback;
 using Windows.UI.Xaml;
-using Windows.UI.Xaml.Media;
+using Windows.UI.Xaml.Input;
 
 namespace Richasy.Bili.ViewModels.Uwp
 {
@@ -20,20 +25,22 @@ namespace Richasy.Bili.ViewModels.Uwp
     /// </summary>
     public partial class PlayerViewModel
     {
-        private void Reset()
+        private async void ResetAsync()
         {
-            IsClassicPlayer = false;
             _videoDetail = null;
             _pgcDetail = null;
             IsDetailError = false;
             _playerInformation = null;
             _interactionNodeId = 0;
             _interactionPartId = 0;
+            _isFirstShowHistory = true;
             CurrentFormat = null;
             CurrentPgcEpisode = null;
             CurrentVideoPart = null;
+            CurrentUgcEpisode = null;
+            CurrentUgcSection = null;
             Publisher = null;
-            HistoryText = string.Empty;
+            HistoryTipText = string.Empty;
             _initializeProgress = TimeSpan.Zero;
             _lastReportProgress = TimeSpan.Zero;
             IsShowEpisode = false;
@@ -43,25 +50,26 @@ namespace Richasy.Bili.ViewModels.Uwp
             IsShowRelatedVideos = false;
             IsShowChat = false;
             IsShowReply = true;
-            IsShowHistory = false;
+            IsShowHistoryTip = false;
+            IsShowNextVideoTip = false;
+            IsShowUgcSection = false;
+            IsShowSection = false;
             IsPlayInformationError = false;
             IsCurrentEpisodeInPgcSection = false;
             IsShowEmptyLiveMessage = true;
             IsLiveMessageAutoScroll = true;
-            CurrentPlayLine = null;
-            CurrentLiveQuality = null;
+            CurrentPlayUrl = null;
             CurrentSubtitleIndex = null;
             CurrentSubtitle = string.Empty;
             IsShowSubtitle = false;
+            IsShowAudioCover = false;
             _audioList.Clear();
             _videoList.Clear();
-            _flvList.Clear();
             _subtitleList.Clear();
             ClearPlayer();
             IsPgc = false;
             IsLive = false;
             IsInteraction = false;
-
             IsLikeChecked = false;
             IsCoinChecked = false;
             IsFollow = false;
@@ -69,6 +77,9 @@ namespace Richasy.Bili.ViewModels.Uwp
             IsEnableLikeHolding = true;
             IsShowChoice = false;
             IsShowInteractionEnd = false;
+            IsShowSwitchEpisodeButton = false;
+            IsNextEpisodeButtonEnabled = false;
+            IsPreviousEpisodeButtonEnabled = false;
 
             PgcSectionCollection.Clear();
             VideoPartCollection.Clear();
@@ -76,30 +87,31 @@ namespace Richasy.Bili.ViewModels.Uwp
             FormatCollection.Clear();
             EpisodeCollection.Clear();
             SeasonCollection.Clear();
-            LiveQualityCollection.Clear();
-            LivePlayLineCollection.Clear();
+            LiveAppQualityCollection.Clear();
             LiveDanmakuCollection.Clear();
             FavoriteMetaCollection.Clear();
             SubtitleIndexCollection.Clear();
             StaffCollection.Clear();
             ChoiceCollection.Clear();
+            TagCollection.Clear();
+            UgcEpisodeCollection.Clear();
+            UgcSectionCollection.Clear();
             ReplyModuleViewModel.Instance.SetInformation(0, Models.Enums.Bili.ReplyType.None);
-            var preferPlayerMode = _settingsToolkit.ReadLocalSetting(SettingNames.DefaultPlayerDisplayMode, PlayerDisplayMode.Default);
-            PlayerDisplayMode = preferPlayerMode;
             Controller.CleanupLiveSocket();
+            await ClearInitViewModelAsync();
         }
 
         private async Task LoadVideoDetailAsync(string videoId, bool isRefresh)
         {
             if (_videoDetail == null || videoId != AvId || isRefresh)
             {
-                Reset();
+                ResetAsync();
                 IsDetailLoading = true;
-                _videoId = Convert.ToInt64(videoId);
                 try
                 {
-                    var detail = await Controller.GetVideoDetailAsync(_videoId);
-                    _videoDetail = detail;
+                    _videoDetail = videoId.StartsWith("bv", StringComparison.OrdinalIgnoreCase)
+                        ? await Controller.GetVideoDetailAsync(videoId)
+                        : await Controller.GetVideoDetailAsync(Convert.ToInt64(videoId.Replace("av", string.Empty)));
                 }
                 catch (Exception ex)
                 {
@@ -126,14 +138,14 @@ namespace Richasy.Bili.ViewModels.Uwp
             }
         }
 
-        private async Task LoadPgcDetailAsync(int episodeId, int seasonId = 0, bool isRefresh = false)
+        private async Task LoadPgcDetailAsync(int episodeId, int seasonId = 0, bool isRefresh = false, string title = "")
         {
             if (_pgcDetail == null ||
                 episodeId.ToString() != EpisodeId ||
                 seasonId.ToString() != SeasonId ||
                 isRefresh)
             {
-                Reset();
+                ResetAsync();
                 IsPgc = true;
                 IsDetailLoading = true;
                 EpisodeId = episodeId.ToString();
@@ -141,7 +153,8 @@ namespace Richasy.Bili.ViewModels.Uwp
 
                 try
                 {
-                    var detail = await Controller.GetPgcDisplayInformationAsync(episodeId, seasonId);
+                    var proxyPack = GetProxyAndArea(title, false);
+                    var detail = await Controller.GetPgcDisplayInformationAsync(episodeId, seasonId, proxyPack.Item1, proxyPack.Item2);
                     _pgcDetail = detail;
                 }
                 catch (Exception ex)
@@ -153,9 +166,9 @@ namespace Richasy.Bili.ViewModels.Uwp
                 }
 
                 InitializePgcDetail();
-                IsDetailLoading = false;
             }
 
+            IsDetailLoading = false;
             var id = 0;
             if (CurrentPgcEpisode != null)
             {
@@ -167,8 +180,13 @@ namespace Richasy.Bili.ViewModels.Uwp
             }
             else if (_pgcDetail.UserStatus?.Progress != null)
             {
-                id = _pgcDetail.UserStatus.Progress.LastEpisodeId;
-                _initializeProgress = TimeSpan.FromSeconds(_pgcDetail.UserStatus.Progress.LastTime);
+                var lastId = _pgcDetail.UserStatus.Progress.LastEpisodeId;
+
+                if (EpisodeCollection.Any(p => p.Data.Id == lastId))
+                {
+                    id = lastId;
+                    _initializeProgress = TimeSpan.FromSeconds(_pgcDetail.UserStatus.Progress.LastTime);
+                }
             }
 
             await ChangePgcEpisodeAsync(id);
@@ -176,11 +194,16 @@ namespace Richasy.Bili.ViewModels.Uwp
 
         private async Task LoadLiveDetailAsync(int roomId)
         {
-            Reset();
+            ResetAsync();
             IsLive = true;
             IsDetailLoading = true;
             IsShowReply = false;
             RoomId = roomId.ToString();
+
+            if (PlaybackRate != 1)
+            {
+                PlaybackRate = 1;
+            }
 
             try
             {
@@ -200,7 +223,7 @@ namespace Richasy.Bili.ViewModels.Uwp
 
             await InitializeUserRelationAsync();
             await Controller.ConnectToLiveRoomAsync(roomId);
-            await ChangeLiveQualityAsync(4);
+            await ChangeLivePlayBehaviorAsync(150);
             await Controller.SendLiveHeartBeatAsync();
         }
 
@@ -211,8 +234,9 @@ namespace Richasy.Bili.ViewModels.Uwp
                 return;
             }
 
+            _videoId = _videoDetail.Arc.Aid;
             Title = _videoDetail.Arc.Title;
-            Subtitle = DateTimeOffset.FromUnixTimeSeconds(_videoDetail.Arc.Pubdate).ToString("yy/MM/dd HH:mm");
+            Subtitle = DateTimeOffset.FromUnixTimeSeconds(_videoDetail.Arc.Pubdate).ToLocalTime().ToString("yy/MM/dd HH:mm");
             Description = _videoDetail.Arc.Desc;
             AvId = _videoDetail.Arc.Aid.ToString();
             BvId = _videoDetail.Bvid;
@@ -229,6 +253,10 @@ namespace Richasy.Bili.ViewModels.Uwp
             ViewerCount = string.Empty;
             CoverUrl = _videoDetail.Arc.Pic;
             IsInteraction = _videoDetail.Interaction != null;
+            IsContentFixed = AccountViewModel.Instance.FixedItemCollection.Any(p => p.Id == AvId);
+            _videoDetail.Tag.Select(p => new VideoTag { Id = p.Id.ToString(), Name = p.Name.TrimStart('#'), Uri = p.Uri })
+                .ToList()
+                .ForEach(p => TagCollection.Add(p));
             ReplyModuleViewModel.Instance.SetInformation(Convert.ToInt32(_videoDetail.Arc.Aid), Models.Enums.Bili.ReplyType.Video);
 
             if (_videoDetail.Staff.Count > 0)
@@ -271,7 +299,20 @@ namespace Richasy.Bili.ViewModels.Uwp
                 VideoPartCollection.Add(new VideoPartViewModel(page));
             }
 
+            if (_videoDetail.UgcSeason != null && _videoDetail.UgcSeason.Sections?.Count > 0)
+            {
+                IsShowUgcSection = true;
+                foreach (var item in _videoDetail.UgcSeason.Sections)
+                {
+                    UgcSectionCollection.Add(item);
+                }
+
+                CurrentUgcEpisode = _videoDetail.UgcSeason.Sections.SelectMany(p => p.Episodes).FirstOrDefault(j => j.Aid == _videoDetail.Arc.Aid);
+                ChangeUgcSection(_videoDetail.UgcSeason.Sections.FirstOrDefault());
+            }
+
             IsShowParts = VideoPartCollection.Count > 1;
+            IsShowSwitchEpisodeButton = IsShowParts;
 
             var relates = _videoDetail.Relates.Where(p => p.Goto.Equals(ServiceConstants.Pgc, StringComparison.OrdinalIgnoreCase) || p.Goto.Equals(ServiceConstants.Av, StringComparison.OrdinalIgnoreCase));
             IsShowRelatedVideos = relates.Count() > 0;
@@ -280,7 +321,7 @@ namespace Richasy.Bili.ViewModels.Uwp
                 RelatedVideoCollection.Add(new VideoViewModel(video));
             }
 
-            if (_videoDetail.History != null && _videoDetail.History.Progress > 0)
+            if (_videoDetail.History != null && _videoDetail.History.Progress > 0 && !IsInteraction)
             {
                 var title = string.Empty;
                 if (IsShowParts)
@@ -291,9 +332,17 @@ namespace Richasy.Bili.ViewModels.Uwp
                         title = part.Data.Page.Part;
                     }
                 }
+                else if (IsShowUgcSection)
+                {
+                    var ugcEpisode = GetUgcEpisodeFromCid(_videoDetail.History.Cid);
+                    if (ugcEpisode != null)
+                    {
+                        title = ugcEpisode.Title;
+                    }
+                }
 
                 var ts = TimeSpan.FromSeconds(_videoDetail.History.Progress);
-                HistoryText = $"{_resourceToolkit.GetLocaleString(LanguageNames.PreviousView)}{title} {ts}";
+                HistoryTipText = $"{_resourceToolkit.GetLocaleString(LanguageNames.PreviousView)}{title} {ts}";
             }
         }
 
@@ -332,6 +381,7 @@ namespace Richasy.Bili.ViewModels.Uwp
             IsShowAlias = !string.IsNullOrEmpty(_pgcDetail.Alias);
             Alias = _pgcDetail.Alias ?? string.Empty;
             IsShowActor = _pgcDetail.Actor != null && !string.IsNullOrEmpty(_pgcDetail.Actor.Information);
+            IsContentFixed = AccountViewModel.Instance.FixedItemCollection.Any(p => p.Id == SeasonId);
             if (IsShowActor)
             {
                 ActorTitle = _pgcDetail.Actor.Title;
@@ -391,6 +441,7 @@ namespace Richasy.Bili.ViewModels.Uwp
 
                 var episodeModule = _pgcDetail.Modules.Where(p => p.Style == ServiceConstants.Positive).FirstOrDefault();
                 IsShowEpisode = episodeModule != null && episodeModule.Data?.Episodes?.Count > 1;
+                IsShowSwitchEpisodeButton = IsShowEpisode;
 
                 if (episodeModule != null && episodeModule.Data.Episodes != null)
                 {
@@ -455,6 +506,7 @@ namespace Richasy.Bili.ViewModels.Uwp
             var user = _liveDetail.AnchorInformation.UserBasicInformation;
             Publisher = new UserViewModel(user.UserName, user.Avatar, _liveDetail.RoomInformation.UserId);
             LivePartition = (_liveDetail.RoomInformation.ParentAreaName ?? "--") + " · " + _liveDetail.RoomInformation.AreaName;
+            IsContentFixed = AccountViewModel.Instance.FixedItemCollection.Any(p => p.Id == RoomId.ToString());
             IsShowChat = true;
         }
 
@@ -463,12 +515,7 @@ namespace Richasy.Bili.ViewModels.Uwp
             if (videoPlayView.VideoInformation != null)
             {
                 _videoList = videoPlayView.VideoInformation.Video.ToList();
-                _audioList = videoPlayView.VideoInformation.Audio.ToList();
-            }
-
-            if (videoPlayView.FlvInformation?.Any() ?? false)
-            {
-                _flvList = videoPlayView.FlvInformation;
+                _audioList = videoPlayView.VideoInformation.Audio?.ToList() ?? new List<DashItem>();
             }
 
             _currentAudio = null;
@@ -509,45 +556,92 @@ namespace Richasy.Bili.ViewModels.Uwp
             }
 
             await ChangeFormatAsync(formatId);
+
+            if (_progressTimer != null && !_progressTimer.IsEnabled)
+            {
+                _progressTimer.Start();
+            }
         }
 
-        private async Task InitializeLivePlayInformationAsync(LivePlayInformation livePlayInfo)
+        private async Task InitializeAppLivePlayInformationAsync(LiveAppPlayUrlInfo livePlayInfo)
         {
-            LiveQualityCollection.Clear();
-            LivePlayLineCollection.Clear();
-            foreach (var q in livePlayInfo.AcceptQuality)
+            LiveAppQualityCollection.Clear();
+            LiveAppPlayLineCollection.Clear();
+
+            var qualities = livePlayInfo.PlayUrl.Descriptions;
+            var stream = livePlayInfo.PlayUrl.StreamList.First();
+            var format = stream.FormatList.First();
+            var codec = format.CodecList.First();
+
+            if (PreferCodec != PreferCodec.Flv && livePlayInfo.PlayUrl.StreamList.Any(p => p.ProtocolName.Equals("http_hls")))
             {
-                var quality = livePlayInfo.QualityDescriptions.Where(p => p.Quality.ToString() == q).FirstOrDefault();
-                if (quality != null)
+                var hlsStream = livePlayInfo.PlayUrl.StreamList.First(p => p.ProtocolName.Equals("http_hls"));
+                var hlsFormat = hlsStream.FormatList.First();
+                var isInScope = false;
+                if (PreferCodec == PreferCodec.H264 && hlsFormat.CodecList.Any(p => p.CodecName.Equals("avc")))
                 {
-                    LiveQualityCollection.Add(new LiveQualityViewModel(quality, quality.Quality == livePlayInfo.CurrentQuality));
+                    isInScope = true;
+                    codec = hlsFormat.CodecList.First(p => p.CodecName.Equals("avc"));
+                }
+                else if (PreferCodec == PreferCodec.H265 && hlsFormat.CodecList.Any(p => p.CodecName.Equals("hevc")))
+                {
+                    isInScope = true;
+                    codec = hlsFormat.CodecList.First(p => p.CodecName.Equals("hevc"));
+                }
+                else if (PreferCodec == PreferCodec.Av1 && hlsFormat.CodecList.Any(p => p.CodecName.Equals("av1")))
+                {
+                    isInScope = true;
+                    codec = hlsFormat.CodecList.First(p => p.CodecName.Equals("av1"));
+                }
+
+                if (isInScope)
+                {
+                    stream = hlsStream;
+                    format = hlsFormat;
                 }
             }
 
-            var currentQuality = LiveQualityCollection.Where(p => p.IsSelected).FirstOrDefault();
+            foreach (var q in codec.AcceptQualities)
+            {
+                var desc = qualities.First(p => p.Quality == q);
+                LiveAppQualityCollection.Add(new LiveAppQualityViewModel(desc, q == codec.CurrentQuality));
+            }
+
+            var currentQuality = LiveAppQualityCollection.Where(p => p.IsSelected).FirstOrDefault();
             if (currentQuality == null)
             {
-                currentQuality = LiveQualityCollection.Where(p => p.Data.Quality == livePlayInfo.CurrentQuality2).FirstOrDefault() ?? LiveQualityCollection.First();
+                currentQuality = LiveAppQualityCollection.Where(p => p.Data.Quality == codec.CurrentQuality).FirstOrDefault() ?? LiveAppQualityCollection.First();
             }
 
-            CurrentLiveQuality = currentQuality.Data;
-            livePlayInfo.PlayLines.ForEach(p => LivePlayLineCollection.Add(new LivePlayLineViewModel(p)));
-
-            if (CurrentPlayLine != null)
+            CurrentAppLiveQuality = currentQuality.Data;
+            var tempUrlIndex = 0;
+            for (var i = 0; i < codec.Urls.Count; i++)
             {
-                foreach (var item in LivePlayLineCollection)
+                var data = codec.Urls[i];
+
+                // 直播链接的Host有两种，一种是IP地址，一种是.com结尾的域名。前者解析不出来，只有后者可以正常播放.
+                if (data.Host.EndsWith(".com"))
                 {
-                    item.IsSelected = item.Data.Order == CurrentPlayLine.Order;
+                    tempUrlIndex++;
+                    LiveAppPlayLineCollection.Add(new LiveAppPlayLineViewModel(data, codec.BaseUrl, tempUrlIndex));
+                }
+            }
+
+            if (CurrentPlayUrl != null)
+            {
+                foreach (var item in LiveAppPlayLineCollection)
+                {
+                    item.IsSelected = item.Data.Host == CurrentPlayUrl.Data.Host;
                 }
 
-                CurrentPlayLine = LivePlayLineCollection.Where(p => p.IsSelected).FirstOrDefault()?.Data ?? LivePlayLineCollection.First().Data;
+                CurrentPlayUrl = LiveAppPlayLineCollection.Where(p => p.IsSelected).FirstOrDefault() ?? LiveAppPlayLineCollection.FirstOrDefault();
             }
             else
             {
-                CurrentPlayLine = LivePlayLineCollection.Where(p => p.Data.Url.Contains("sid")).FirstOrDefault()?.Data ?? LivePlayLineCollection.First().Data;
+                CurrentPlayUrl = LiveAppPlayLineCollection.FirstOrDefault();
             }
 
-            if (CurrentPlayLine == null)
+            if (CurrentPlayUrl == null)
             {
                 IsPlayInformationError = true;
                 PlayInformationErrorText = "无法获取正确的播放地址";
@@ -555,7 +649,7 @@ namespace Richasy.Bili.ViewModels.Uwp
                 return;
             }
 
-            await InitializeLiveDashAsync(CurrentPlayLine.Url);
+            await InitializeLiveDashAsync(CurrentPlayUrl.Url);
         }
 
         private void InitializeTimer()
@@ -582,13 +676,16 @@ namespace Richasy.Bili.ViewModels.Uwp
             }
         }
 
-        private int GetPreferCodecId()
+        private string GetPreferCodecId()
         {
-            var id = 7;
+            var id = "avc";
             switch (PreferCodec)
             {
                 case PreferCodec.H265:
-                    id = 12;
+                    id = "hev";
+                    break;
+                case PreferCodec.Av1:
+                    id = "av01";
                     break;
                 default:
                     break;
@@ -603,11 +700,44 @@ namespace Richasy.Bili.ViewModels.Uwp
             {
                 item.IsSelected = item.Data.Equals(CurrentVideoPart);
             }
+
+            if (VideoPartCollection.Count > 0 && CurrentVideoPart != null)
+            {
+                IsPreviousEpisodeButtonEnabled = CurrentVideoPart.Page.Page_ != VideoPartCollection.First().Data.Page.Page_;
+                IsNextEpisodeButtonEnabled = CurrentVideoPart.Page.Page_ != VideoPartCollection.Last().Data.Page.Page_;
+            }
+        }
+
+        private void CheckUgcEpisodeSelection()
+        {
+            foreach (var item in UgcEpisodeCollection)
+            {
+                item.IsSelected = item.VideoId.Equals(CurrentUgcEpisode.Aid.ToString());
+            }
+
+            if (UgcEpisodeCollection.Count > 0 && CurrentUgcEpisode != null)
+            {
+                IsPreviousEpisodeButtonEnabled = CurrentUgcEpisode.Aid.ToString() != UgcEpisodeCollection.First().VideoId;
+                IsNextEpisodeButtonEnabled = CurrentUgcEpisode.Aid.ToString() != UgcEpisodeCollection.Last().VideoId;
+            }
         }
 
         private long GetCurrentPartId()
         {
-            return IsInteraction ? _interactionPartId : CurrentVideoPart?.Page?.Cid ?? 0;
+            if (IsInteraction)
+            {
+                return _interactionPartId;
+            }
+            else if (UgcEpisodeCollection.Count > 0)
+            {
+                return CurrentUgcEpisode?.Page?.Cid ?? 0;
+            }
+            else if (VideoPartCollection.Count > 0)
+            {
+                return CurrentVideoPart?.Page?.Cid ?? 0;
+            }
+
+            return 0;
         }
 
         private void CheckEpisodeSelection()
@@ -626,6 +756,12 @@ namespace Richasy.Bili.ViewModels.Uwp
             }
 
             IsCurrentEpisodeInPgcSection = !EpisodeCollection.Any(p => p.Data.Equals(CurrentPgcEpisode));
+
+            if (EpisodeCollection.Count > 0)
+            {
+                IsPreviousEpisodeButtonEnabled = CurrentPgcEpisode.Index != EpisodeCollection.First().Data.Index;
+                IsNextEpisodeButtonEnabled = CurrentPgcEpisode.Index != EpisodeCollection.Last().Data.Index;
+            }
         }
 
         private void CheckFormatSelection()
@@ -639,10 +775,33 @@ namespace Richasy.Bili.ViewModels.Uwp
         private async Task CheckVideoHistoryAsync()
         {
             var history = _videoDetail.History;
-            if (CurrentVideoPart == null || history.Cid != GetCurrentPartId())
+            if (IsShowParts)
             {
-                await ChangeVideoPartAsync(history.Cid);
-                _initializeProgress = TimeSpan.FromSeconds(history.Progress);
+                if (history.Cid != GetCurrentPartId())
+                {
+                    await ChangeVideoPartAsync(history.Cid);
+                    _initializeProgress = TimeSpan.FromSeconds(history.Progress);
+                }
+                else
+                {
+                    _currentVideoPlayer.PlaybackSession.Position = TimeSpan.FromSeconds(history.Progress);
+                }
+            }
+            else if (IsShowUgcSection)
+            {
+                if (history.Cid != CurrentUgcEpisode?.Cid)
+                {
+                    var episode = GetUgcEpisodeFromCid(history.Cid);
+                    if (episode != null)
+                    {
+                        await LoadAsync(new VideoViewModel(episode));
+                        _initializeProgress = TimeSpan.FromSeconds(history.Progress);
+                    }
+                }
+                else
+                {
+                    _currentVideoPlayer.PlaybackSession.Position = TimeSpan.FromSeconds(history.Progress);
+                }
             }
             else
             {
@@ -650,9 +809,23 @@ namespace Richasy.Bili.ViewModels.Uwp
             }
         }
 
+        private async Task CheckPgcHistoryAsync()
+        {
+            var history = _pgcDetail.UserStatus.Progress;
+            if (CurrentPgcEpisode == null || history.LastEpisodeId != CurrentPgcEpisode.Id)
+            {
+                await ChangePgcEpisodeAsync(history.LastEpisodeId);
+                _initializeProgress = TimeSpan.FromSeconds(history.LastTime);
+            }
+            else
+            {
+                _currentVideoPlayer.PlaybackSession.Position = TimeSpan.FromSeconds(history.LastTime);
+            }
+        }
+
         private async void OnProgressTimerTickAsync(object sender, object e)
         {
-            if (_videoDetail == null || CurrentVideoPart == null)
+            if (_videoDetail == null && CurrentVideoPart == null && _pgcDetail == null && CurrentPgcEpisode == null)
             {
                 return;
             }
@@ -691,13 +864,29 @@ namespace Richasy.Bili.ViewModels.Uwp
         {
             if (PlayerStatus == PlayerStatus.Playing && _subtitleList.Count > 0 && CanShowSubtitle)
             {
-                var progress = IsClassicPlayer ? ClassicPlayer.Position : _currentVideoPlayer.PlaybackSession.Position;
+                var progress = _currentVideoPlayer.PlaybackSession.Position;
                 var sec = progress.TotalSeconds;
                 var subtitle = _subtitleList.Where(p => p.From <= sec && p.To >= sec).FirstOrDefault();
                 if (subtitle != null && !string.IsNullOrEmpty(subtitle.Content))
                 {
                     IsShowSubtitle = true;
-                    CurrentSubtitle = subtitle.Content;
+                    var sub = subtitle.Content;
+                    if (SubtitleConvertType != Models.Enums.App.SubtitleConvertType.None)
+                    {
+                        switch (SubtitleConvertType)
+                        {
+                            case Models.Enums.App.SubtitleConvertType.ToSimplifiedChinese:
+                                sub = ToolGood.Words.WordsHelper.ToSimplifiedChinese(sub);
+                                break;
+                            case Models.Enums.App.SubtitleConvertType.ToTraditionalChinese:
+                                sub = ToolGood.Words.WordsHelper.ToTraditionalChinese(sub);
+                                break;
+                            default:
+                                break;
+                        }
+                    }
+
+                    CurrentSubtitle = sub;
                 }
                 else
                 {
@@ -716,6 +905,7 @@ namespace Richasy.Bili.ViewModels.Uwp
             player.AutoPlay = IsAutoPlay;
             player.Volume = Volume;
             player.VolumeChanged += OnMediaPlayerVolumeChangedAsync;
+            player.IsLoopingEnabled = IsInfiniteLoop;
 
             return player;
         }
@@ -765,18 +955,16 @@ namespace Richasy.Bili.ViewModels.Uwp
 
                 session.PlaybackRate = PlaybackRate;
             }
-
-            var props = _currentPlaybackItem.GetDisplayProperties();
-            props.Type = Windows.Media.MediaPlaybackType.Video;
-            props.Thumbnail = Windows.Storage.Streams.RandomAccessStreamReference.CreateFromUri(new Uri(CoverUrl + "@100w_100h_1c_100q.jpg"));
-            props.VideoProperties.Title = Title;
-            props.VideoProperties.Subtitle = GetSlimDescription(IsPgc ? Subtitle : Description);
-            props.VideoProperties.Genres.Add(_videoType.ToString());
-            _currentPlaybackItem.ApplyDisplayProperties(props);
         }
 
         private async void OnMediaPlayerFailedAsync(MediaPlayer sender, MediaPlayerFailedEventArgs args)
         {
+            if (args.ExtendedErrorCode?.HResult == -1072873851 || args.Error == MediaPlayerError.Unknown)
+            {
+                // 不处理 Shutdown 造成的错误.
+                return;
+            }
+
             await Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal, () =>
             {
                 // 在视频未加载时不对报错进行处理.
@@ -790,9 +978,6 @@ namespace Richasy.Bili.ViewModels.Uwp
                 var message = string.Empty;
                 switch (args.Error)
                 {
-                    case MediaPlayerError.Unknown:
-                        message = _resourceToolkit.GetLocaleString(LanguageNames.UnknownError);
-                        break;
                     case MediaPlayerError.Aborted:
                         message = _resourceToolkit.GetLocaleString(LanguageNames.Aborted);
                         break;
@@ -819,17 +1004,8 @@ namespace Richasy.Bili.ViewModels.Uwp
             await Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal, async () =>
             {
                 PlayerStatus = PlayerStatus.End;
-                if (IsLive)
-                {
-                    var currentOrder = CurrentPlayLine == null ? -1 : CurrentPlayLine.Order;
-                    if (currentOrder == LivePlayLineCollection.Count - 1)
-                    {
-                        currentOrder = -1;
-                    }
-
-                    await ChangeLivePlayLineAsync(currentOrder + 1);
-                }
-                else if (IsInteraction)
+                var isContinue = _settingsToolkit.ReadLocalSetting(SettingNames.IsContinusPlay, true);
+                if (IsInteraction)
                 {
                     if (ChoiceCollection.Count > 0)
                     {
@@ -848,6 +1024,59 @@ namespace Richasy.Bili.ViewModels.Uwp
                     {
                         IsShowChoice = false;
                         IsShowInteractionEnd = true;
+                    }
+                }
+                else if (IsPgc)
+                {
+                    var canContinue = !IsCurrentEpisodeInPgcSection && EpisodeCollection.Count > 1 && CurrentPgcEpisode.Index < EpisodeCollection.Last().Data.Index;
+                    if (isContinue && canContinue)
+                    {
+                        var episode = EpisodeCollection.Where(p => p.Data.Index == CurrentPgcEpisode.Index + 1).FirstOrDefault();
+                        if (episode != null)
+                        {
+                            await ChangePgcEpisodeAsync(episode.Data.Id);
+                        }
+                    }
+                    else
+                    {
+                        PlayerDisplayMode = PlayerDisplayMode.Default;
+                    }
+                }
+                else
+                {
+                    // Video
+                    var canContinue = (VideoPartCollection.Count > 1 && CurrentVideoPart.Page.Page_ < VideoPartCollection.Last().Data.Page.Page_)
+                        || (UgcEpisodeCollection.Count > 1 && CurrentUgcEpisode.Aid.ToString() != UgcEpisodeCollection.Last().VideoId);
+                    if (isContinue && canContinue)
+                    {
+                        if (IsShowParts)
+                        {
+                            var part = VideoPartCollection.FirstOrDefault(p => p.Data.Page.Page_ == CurrentVideoPart.Page.Page_ + 1);
+                            if (part != null)
+                            {
+                                await ChangeVideoPartAsync(part.Data.Page.Cid);
+                            }
+                        }
+                        else if (IsShowUgcSection)
+                        {
+                            var index = CurrentUgcSection.Episodes.IndexOf(CurrentUgcEpisode);
+                            if (index > -1 && index < CurrentUgcSection.Episodes.Count - 1)
+                            {
+                                var next = CurrentUgcSection.Episodes[index + 1];
+                                await LoadAsync(new VideoViewModel(next));
+                            }
+                        }
+                    }
+                    else
+                    {
+                        if (HasNextVideo() && _settingsToolkit.ReadLocalSetting(SettingNames.IsAutoPlayNextRelatedVideo, false))
+                        {
+                            IsShowNextVideoTip = true;
+                        }
+                        else
+                        {
+                            PlayerDisplayMode = PlayerDisplayMode.Default;
+                        }
                     }
                 }
             });
@@ -871,15 +1100,21 @@ namespace Richasy.Bili.ViewModels.Uwp
                         case MediaPlaybackState.Playing:
                             PlayerStatus = PlayerStatus.Playing;
                             IsPlayInformationError = false;
-                            if (!string.IsNullOrEmpty(HistoryText) && _initializeProgress == TimeSpan.Zero)
+                            if (!string.IsNullOrEmpty(HistoryTipText) && _initializeProgress == TimeSpan.Zero && _isFirstShowHistory)
                             {
-                                IsShowHistory = true;
+                                IsShowHistoryTip = true;
+                                _isFirstShowHistory = false;
                             }
 
                             if (sender.PlaybackSession.Position < _initializeProgress)
                             {
                                 sender.PlaybackSession.Position = _initializeProgress;
                                 _initializeProgress = TimeSpan.Zero;
+                            }
+
+                            if (IsShowNextVideoTip)
+                            {
+                                IsShowNextVideoTip = false;
                             }
 
                             break;
@@ -901,89 +1136,6 @@ namespace Richasy.Bili.ViewModels.Uwp
             });
         }
 
-        private async void OnClassicStateChangedAsync(object sender, RoutedEventArgs e)
-        {
-            await Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal, () =>
-            {
-                try
-                {
-                    switch (ClassicPlayer.CurrentState)
-                    {
-                        case MediaElementState.Closed:
-                            PlayerStatus = PlayerStatus.End;
-                            break;
-                        case MediaElementState.Opening:
-                            IsPlayInformationError = false;
-                            PlayerStatus = PlayerStatus.Playing;
-                            break;
-                        case MediaElementState.Playing:
-                            PlayerStatus = PlayerStatus.Playing;
-                            IsPlayInformationError = false;
-                            if (!string.IsNullOrEmpty(HistoryText) && _initializeProgress == TimeSpan.Zero)
-                            {
-                                IsShowHistory = true;
-                            }
-
-                            if (ClassicPlayer.Position < _initializeProgress)
-                            {
-                                ClassicPlayer.Position = _initializeProgress;
-                                _initializeProgress = TimeSpan.Zero;
-                            }
-
-                            break;
-                        case MediaElementState.Buffering:
-                            PlayerStatus = PlayerStatus.Buffering;
-                            break;
-                        case MediaElementState.Paused:
-                            PlayerStatus = PlayerStatus.Pause;
-                            break;
-                        default:
-                            PlayerStatus = PlayerStatus.NotLoad;
-                            break;
-                    }
-                }
-                catch (Exception)
-                {
-                    PlayerStatus = PlayerStatus.NotLoad;
-                }
-            });
-        }
-
-        private async void OnClassicMediaEndedAsync(object sender, RoutedEventArgs e)
-        {
-            await Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal, () =>
-            {
-                PlayerStatus = PlayerStatus.End;
-            });
-        }
-
-        private async void OnClassicMediaFailedAsync(object sender, ExceptionRoutedEventArgs e)
-        {
-            await Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal, () =>
-            {
-                // 在视频未加载时不对报错进行处理.
-                if (PlayerStatus == PlayerStatus.NotLoad)
-                {
-                    return;
-                }
-
-                PlayerStatus = PlayerStatus.End;
-                IsPlayInformationError = true;
-                var message = e.ErrorMessage;
-                PlayInformationErrorText = message;
-                _logger.LogError(new Exception($"播放失败（经典播放器）: {message}"));
-            });
-        }
-
-        private void OnClassicMediaOpened(object sender, RoutedEventArgs e)
-        {
-            if (_initializeProgress != TimeSpan.Zero)
-            {
-                ClassicPlayer.Position = _initializeProgress;
-                _initializeProgress = TimeSpan.Zero;
-            }
-        }
-
         private void OnUserLoggedOut(object sender, EventArgs e)
         {
             IsCoinChecked = false;
@@ -991,5 +1143,161 @@ namespace Richasy.Bili.ViewModels.Uwp
             IsFollow = false;
             IsFavoriteChecked = false;
         }
+
+        private async Task RecordInitViewModelToLocalAsync(string vid, int sid, VideoType type, string title)
+        {
+            var data = new CurrentPlayingRecord(vid, sid, type);
+            await _fileToolkit.WriteLocalDataAsync(AppConstants.LastOpenVideoFileName, data);
+            _settingsToolkit.WriteLocalSetting(SettingNames.CanContinuePlay, true);
+            _settingsToolkit.WriteLocalSetting(SettingNames.ContinuePlayTitle, title);
+        }
+
+        private void InitializePlaybackRateProperties()
+        {
+            var isEnhancement = _settingsToolkit.ReadLocalSetting(SettingNames.PlaybackRateEnhancement, false);
+            MaxPlaybackRate = isEnhancement ? 6d : 3d;
+            PlaybackRateStep = isEnhancement ? 0.2 : 0.1;
+
+            PlaybackRateNodeCollection.Clear();
+            var defaultList = new List<double> { 0.5, 0.75, 1.0, 1.25, 1.5, 2.0 };
+            if (isEnhancement)
+            {
+                defaultList = defaultList.Union(new List<double> { 2.5, 3.0, 3.5, 5.0 }).ToList();
+            }
+
+            defaultList.ForEach(p => PlaybackRateNodeCollection.Add(p));
+
+            var isGlobal = _settingsToolkit.ReadLocalSetting(SettingNames.GlobalPlaybackRate, false);
+            if (!isGlobal)
+            {
+                PlaybackRate = 1d;
+            }
+        }
+
+        private bool HasNextVideo()
+        {
+            var result = IsShowViewLater
+                ? ViewLaterVideoCollection.FirstOrDefault(p => p.IsSelected) != ViewLaterVideoCollection.Last()
+                : !IsInteraction
+                && _videoType == VideoType.Video
+                && IsShowRelatedVideos
+                && RelatedVideoCollection.Count > 0;
+
+            if (result)
+            {
+                if (IsShowViewLater)
+                {
+                    var index = ViewLaterVideoCollection.IndexOf(ViewLaterVideoCollection.FirstOrDefault(p => p.IsSelected));
+                    if (index != -1)
+                    {
+                        var nextVideo = ViewLaterVideoCollection[index + 1];
+                        NextVideoTipText = nextVideo.Title;
+                    }
+                    else
+                    {
+                        result = false;
+                    }
+                }
+                else
+                {
+                    var nextVideo = RelatedVideoCollection.First();
+                    NextVideoTipText = nextVideo.Title;
+                }
+            }
+
+            return result;
+        }
+
+        private Episode GetUgcEpisodeFromCid(long cid)
+        {
+            if (_videoDetail.UgcSeason?.Sections != null)
+            {
+                return _videoDetail.UgcSeason.Sections.SelectMany(p => p.Episodes).FirstOrDefault(p => p.Cid == cid);
+            }
+
+            return null;
+        }
+
+        private Tuple<string, string> GetProxyAndArea(string title, bool isVideo)
+        {
+            var proxy = string.Empty;
+            var area = string.Empty;
+
+            var isOpenRoaming = _settingsToolkit.ReadLocalSetting(SettingNames.IsOpenRoaming, false);
+            var localProxy = isVideo
+                ? _settingsToolkit.ReadLocalSetting(SettingNames.RoamingVideoAddress, string.Empty)
+                : _settingsToolkit.ReadLocalSetting(SettingNames.RoamingViewAddress, string.Empty);
+            if (isOpenRoaming && !string.IsNullOrEmpty(localProxy))
+            {
+                if (!string.IsNullOrEmpty(title))
+                {
+                    if (Regex.IsMatch(title, @"僅.*港.*地區"))
+                    {
+                        area = "hk";
+                    }
+                    else if (Regex.IsMatch(title, @"僅.*台.*地區"))
+                    {
+                        area = "tw";
+                    }
+                }
+
+                var isForceProxy = _settingsToolkit.ReadLocalSetting(SettingNames.IsGlobeProxy, false);
+                if ((isForceProxy && string.IsNullOrEmpty(area))
+                    || !string.IsNullOrEmpty(area))
+                {
+                    proxy = localProxy;
+                }
+            }
+
+            return new Tuple<string, string>(proxy, area);
+        }
+
+        /// <summary>
+        /// 获取当前正在播放的内容Id.
+        /// </summary>
+        /// <returns>Id.</returns>
+        private FixedItem ConvertToFixItem()
+        {
+            var item = new FixedItem();
+            var id = string.Empty;
+            switch (_videoType)
+            {
+                case VideoType.Video:
+                    id = AvId;
+                    break;
+                case VideoType.Pgc:
+                    id = SeasonId;
+                    break;
+                case VideoType.Live:
+                    id = RoomId;
+                    break;
+                default:
+                    break;
+            }
+
+            var title = Title;
+            if (_videoType == VideoType.Live)
+            {
+                title = string.Format(_resourceToolkit.GetLocaleString(LanguageNames.SomeoneLiveRoom), Publisher.Name);
+            }
+
+            var cover = CoverUrl;
+            Enum.TryParse(_videoType.ToString(), out FixedType type);
+            item.Id = id;
+            item.Title = title;
+            item.Cover = cover;
+            item.Type = type;
+
+            return item;
+        }
+
+        private void OnBiliPlayerPointerMoved(object sender, PointerRoutedEventArgs e)
+            => IsPointerInMediaElement = true;
+
+        private void OnBiliPlayerPointerExited(object sender, PointerRoutedEventArgs e)
+            => IsPointerInMediaElement = false;
+
+        private void OnBiliPlayerPointerEntered(object sender, PointerRoutedEventArgs e)
+            => IsPointerInMediaElement = true;
     }
 }

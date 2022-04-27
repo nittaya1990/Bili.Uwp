@@ -26,7 +26,7 @@ namespace Richasy.Bili.App.Controls
         /// <param name="vm">视图模型.</param>
         public FavoriteVideoView()
         {
-            this.InitializeComponent();
+            InitializeComponent();
         }
 
         /// <summary>
@@ -67,7 +67,7 @@ namespace Richasy.Bili.App.Controls
             await ViewModel.RequestDataAsync();
         }
 
-        private void OnVideoItemClick(object sender, VideoViewModel e)
+        private void OnVideoCardClick(object sender, VideoViewModel e)
         {
             Hide();
         }

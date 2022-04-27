@@ -1,5 +1,6 @@
 ﻿// Copyright (c) Richasy. All rights reserved.
 
+using System.Threading.Tasks;
 using Richasy.Bili.ViewModels.Uwp;
 
 namespace Richasy.Bili.App.Controls.Player.Related
@@ -14,20 +15,17 @@ namespace Richasy.Bili.App.Controls.Player.Related
         /// </summary>
         public PgcSectionView()
         {
-            this.InitializeComponent();
+            InitializeComponent();
         }
 
         private async void OnEpisodeItemClickAsync(object sender, Windows.UI.Xaml.RoutedEventArgs e)
         {
             var card = sender as CardPanel;
             var data = card.DataContext as PgcEpisodeViewModel;
+            data.Data.IsPV = 1;
             if (!data.Data.Id.ToString().Equals(ViewModel.EpisodeId))
             {
                 await ViewModel.LoadAsync(data.Data);
-            }
-            else
-            {
-                data.IsSelected = true;
             }
         }
     }

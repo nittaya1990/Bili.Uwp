@@ -29,22 +29,10 @@ namespace Richasy.Bili.ViewModels.Uwp
         public ObservableCollection<PlayerDisplayMode> PlayerDisplayModeCollection { get; set; }
 
         /// <summary>
-        /// 媒体传输控件控制模式可选集合.
-        /// </summary>
-        [Reactive]
-        public ObservableCollection<MTCControlMode> MTCControlModeCollection { get; set; }
-
-        /// <summary>
         /// 偏好的解码模式可选集合.
         /// </summary>
         [Reactive]
         public ObservableCollection<PreferCodec> PreferCodecCollection { get; set; }
-
-        /// <summary>
-        /// 双击行为可选集合.
-        /// </summary>
-        [Reactive]
-        public ObservableCollection<DoubleClickBehavior> DoubleClickBehaviorCollection { get; set; }
 
         /// <summary>
         /// 应用主题.
@@ -83,16 +71,16 @@ namespace Richasy.Bili.ViewModels.Uwp
         public bool IsAutoPlayWhenLoaded { get; set; }
 
         /// <summary>
+        /// 自动播放下一个关联视频.
+        /// </summary>
+        [Reactive]
+        public bool IsAutoPlayNextRelatedVideo { get; set; }
+
+        /// <summary>
         /// 默认播放器显示模式.
         /// </summary>
         [Reactive]
         public PlayerDisplayMode DefaultPlayerDisplayMode { get; set; }
-
-        /// <summary>
-        /// 默认媒体传输控件控制模式.
-        /// </summary>
-        [Reactive]
-        public MTCControlMode DefaultMTCControlMode { get; set; }
 
         /// <summary>
         /// 优先高画质.
@@ -101,16 +89,22 @@ namespace Richasy.Bili.ViewModels.Uwp
         public bool IsPreferHighQuality { get; set; }
 
         /// <summary>
+        /// 禁用 P2P CDN.
+        /// </summary>
+        [Reactive]
+        public bool DisableP2PCdn { get; set; }
+
+        /// <summary>
+        /// 连续播放.
+        /// </summary>
+        [Reactive]
+        public bool IsContinusPlay { get; set; }
+
+        /// <summary>
         /// 偏好的解码模式.
         /// </summary>
         [Reactive]
         public PreferCodec PreferCodec { get; set; }
-
-        /// <summary>
-        /// 双击行为.
-        /// </summary>
-        [Reactive]
-        public DoubleClickBehavior DoubleClickBehavior { get; set; }
 
         /// <summary>
         /// 单次快进/快退时长.
@@ -119,9 +113,81 @@ namespace Richasy.Bili.ViewModels.Uwp
         public double SingleFastForwardAndRewindSpan { get; set; }
 
         /// <summary>
+        /// 是否开启播放速率增强.
+        /// </summary>
+        [Reactive]
+        public bool PlaybackRateEnhancement { get; set; }
+
+        /// <summary>
+        /// 是否开启全局播放速率.
+        /// </summary>
+        [Reactive]
+        public bool GlobalPlaybackRate { get; set; }
+
+        /// <summary>
         /// 应用版本.
         /// </summary>
         [Reactive]
         public string Version { get; set; }
+
+        /// <summary>
+        /// 是否支持初始检查继续播放.
+        /// </summary>
+        [Reactive]
+        public bool IsSupportContinuePlay { get; set; }
+
+        /// <summary>
+        /// 是否复制截图.
+        /// </summary>
+        [Reactive]
+        public bool IsCopyScreenshot { get; set; }
+
+        /// <summary>
+        /// 是否打开截图文件.
+        /// </summary>
+        [Reactive]
+        public bool IsOpenScreenshotFile { get; set; }
+
+        /// <summary>
+        /// 是否打开番剧代理.
+        /// </summary>
+        [Reactive]
+        public bool IsOpenRoaming { get; set; }
+
+        /// <summary>
+        /// 是否打开全局代理.
+        /// </summary>
+        [Reactive]
+        public bool IsGlobeProxy { get; set; }
+
+        /// <summary>
+        /// 播放代理地址.
+        /// </summary>
+        [Reactive]
+        public string RoamingVideoAddress { get; set; }
+
+        /// <summary>
+        /// 详情代理地址.
+        /// </summary>
+        [Reactive]
+        public string RoamingViewAddress { get; set; }
+
+        /// <summary>
+        /// 搜索代理地址.
+        /// </summary>
+        [Reactive]
+        public string RoamingSearchAddress { get; set; }
+
+        /// <summary>
+        /// 是否开启动态通知.
+        /// </summary>
+        [Reactive]
+        public bool IsOpenDynamicNotification { get; set; }
+
+        /// <summary>
+        /// 是否允许后台任务.
+        /// </summary>
+        [Reactive]
+        public bool IsEnableBackgroundTask { get; set; }
     }
 }

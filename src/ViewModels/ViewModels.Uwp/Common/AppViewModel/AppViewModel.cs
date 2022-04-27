@@ -1,12 +1,16 @@
 ﻿// Copyright (c) Richasy. All rights reserved.
 
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Richasy.Bili.Controller.Uwp;
 using Richasy.Bili.Locator.Uwp;
+using Richasy.Bili.Models.App.Args;
 using Richasy.Bili.Models.App.Constants;
 using Richasy.Bili.Models.Enums;
 using Richasy.Bili.Models.Enums.App;
+using Windows.ApplicationModel.Background;
 using Windows.UI.Xaml;
 
 namespace Richasy.Bili.ViewModels.Uwp
@@ -21,15 +25,17 @@ namespace Richasy.Bili.ViewModels.Uwp
         /// </summary>
         internal AppViewModel()
         {
-            _ = BiliController.Instance;
+            _controller = BiliController.Instance;
             IsBackButtonEnabled = true;
             CurrentMainContentId = PageIds.Recommend;
             ServiceLocator.Instance.LoadService(out _resourceToolkit)
-                                   .LoadService(out _settingToolkit);
+                                   .LoadService(out _settingToolkit)
+                                   .LoadService(out _loggerModule);
             _displayRequest = new Windows.System.Display.DisplayRequest();
             IsXbox = Windows.System.Profile.AnalyticsInfo.VersionInfo.DeviceFamily == "Windows.Xbox";
             IsNavigatePaneOpen = !IsXbox;
             _isWide = null;
+            _controller.UpdateReceived += OnUpdateReceived;
             InitializeTheme();
         }
 
@@ -37,9 +43,7 @@ namespace Richasy.Bili.ViewModels.Uwp
         /// 返回.
         /// </summary>
         public void Back()
-        {
-            RequestBack?.Invoke(this, EventArgs.Empty);
-        }
+            => RequestBack?.Invoke(this, EventArgs.Empty);
 
         /// <summary>
         /// 显示提示.
@@ -47,9 +51,7 @@ namespace Richasy.Bili.ViewModels.Uwp
         /// <param name="message">消息内容.</param>
         /// <param name="type">消息类型.</param>
         public void ShowTip(string message, InfoType type = InfoType.Information)
-        {
-            RequestShowTip?.Invoke(this, new Models.App.Args.AppTipNotificationEventArgs(message, type));
-        }
+            => RequestShowTip?.Invoke(this, new AppTipNotificationEventArgs(message, type));
 
         /// <summary>
         /// 修改当前主内容标识.
@@ -86,11 +88,37 @@ namespace Richasy.Bili.ViewModels.Uwp
         }
 
         /// <summary>
+        /// 显示图片.
+        /// </summary>
+        /// <param name="images">图片列表.</param>
+        /// <param name="firstIndex">初始索引.</param>
+        public void ShowImages(List<string> images, int firstIndex)
+        {
+            if (images == null)
+            {
+                RequestShowImages?.Invoke(this, null);
+            }
+            else
+            {
+                RequestShowImages?.Invoke(this, new ShowImageEventArgs(images, firstIndex));
+            }
+        }
+
+        /// <summary>
         /// 激活显示请求.
         /// </summary>
         public void ActiveDisplayRequest()
         {
-            _displayRequest.RequestActive();
+            if (_displayRequest != null)
+            {
+                try
+                {
+                    _displayRequest.RequestActive();
+                }
+                catch (Exception)
+                {
+                }
+            }
         }
 
         /// <summary>
@@ -98,7 +126,16 @@ namespace Richasy.Bili.ViewModels.Uwp
         /// </summary>
         public void ReleaseDisplayRequest()
         {
-            _displayRequest.RequestRelease();
+            if (_displayRequest != null)
+            {
+                try
+                {
+                    _displayRequest.RequestRelease();
+                }
+                catch (Exception)
+                {
+                }
+            }
         }
 
         /// <summary>
@@ -179,5 +216,84 @@ namespace Richasy.Bili.ViewModels.Uwp
                 }
             }
         }
+
+        /// <summary>
+        /// 检查更新.
+        /// </summary>
+        /// <returns><see cref="Task"/>.</returns>
+        public Task CheckUpdateAsync()
+            => _controller.CheckUpdateAsync();
+
+        /// <summary>
+        /// 检查是否可以继续播放.
+        /// </summary>
+        public void CheckContinuePlay()
+        {
+            var supportCheck = _settingToolkit.ReadLocalSetting(SettingNames.SupportContinuePlay, true);
+            var canPlay = _settingToolkit.ReadLocalSetting(SettingNames.CanContinuePlay, false);
+            if (supportCheck && canPlay)
+            {
+                RequestContinuePlay?.Invoke(this, EventArgs.Empty);
+            }
+        }
+
+        /// <summary>
+        /// 注册新动态通知的后台通知任务.
+        /// </summary>
+        /// <returns>注册结果.</returns>
+        public async Task<bool> RegisterNewDynamicBackgroundTaskAsync()
+        {
+            var taskName = AppConstants.NewDynamicTaskName;
+            var hasRegistered = BackgroundTaskRegistration.AllTasks.Any(p => p.Value.Name.Equals(taskName));
+            if (!hasRegistered)
+            {
+                var status = await BackgroundExecutionManager.RequestAccessAsync();
+                if (!status.ToString().Contains("Allowed"))
+                {
+                    return false;
+                }
+
+                var builder = new BackgroundTaskBuilder();
+                builder.Name = taskName;
+                builder.TaskEntryPoint = taskName;
+                builder.SetTrigger(new TimeTrigger(15, false));
+                builder.AddCondition(new SystemCondition(SystemConditionType.InternetAvailable));
+                _ = builder.Register();
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// 注销新动态通知任务.
+        /// </summary>
+        public void UnregisterNewDynamicBackgroundTask()
+        {
+            var taskName = AppConstants.NewDynamicTaskName;
+            var task = BackgroundTaskRegistration.AllTasks.FirstOrDefault(p => p.Value.Name.Equals(taskName)).Value;
+            if (task != null)
+            {
+                task.Unregister(true);
+            }
+        }
+
+        /// <summary>
+        /// 检查新动态通知是否启用.
+        /// </summary>
+        /// <returns><see cref="Task"/>.</returns>
+        public async Task CheckNewDynamicRegistrationAsync()
+        {
+            var openDynamicNotify = _settingToolkit.ReadLocalSetting(SettingNames.IsOpenNewDynamicNotify, true);
+            if (openDynamicNotify)
+            {
+                await RegisterNewDynamicBackgroundTaskAsync();
+            }
+            else
+            {
+                UnregisterNewDynamicBackgroundTask();
+            }
+        }
+
+        private void OnUpdateReceived(object sender, UpdateEventArgs e) => RequestShowUpdateDialog?.Invoke(this, e);
     }
 }

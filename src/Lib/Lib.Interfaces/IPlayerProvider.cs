@@ -23,6 +23,13 @@ namespace Richasy.Bili.Lib.Interfaces
         Task<ViewReply> GetVideoDetailAsync(long videoId);
 
         /// <summary>
+        /// 获取视频详细信息，包括分P内容.
+        /// </summary>
+        /// <param name="videoId">视频Bv Id.</param>
+        /// <returns><see cref="ViewReply"/>.</returns>
+        Task<ViewReply> GetVideoDetailAsync(string videoId);
+
+        /// <summary>
         /// 获取同时在线观看人数.
         /// </summary>
         /// <param name="videoId">视频Id.</param>
@@ -42,9 +49,12 @@ namespace Richasy.Bili.Lib.Interfaces
         /// 获取PGC的剧集Dash播放信息.
         /// </summary>
         /// <param name="partId">对应剧集的Cid.</param>
+        /// <param name="episodeId">对应分集Id.</param>
         /// <param name="seasonType">剧集类型.</param>
+        /// <param name="proxy">代理地址.</param>
+        /// <param name="area">地区.</param>
         /// <returns><see cref="PlayerInformation"/>.</returns>
-        Task<PlayerInformation> GetDashAsync(int partId, int seasonType);
+        Task<PlayerInformation> GetDashAsync(int partId, int episodeId, int seasonType, string proxy = "", string area = "");
 
         /// <summary>
         /// 获取弹幕元数据信息.
@@ -152,5 +162,12 @@ namespace Richasy.Bili.Lib.Interfaces
         /// <param name="edgeId">选区Id.</param>
         /// <returns>选区响应.</returns>
         Task<InteractionEdgeResponse> GetInteractionEdgeAsync(long videoId, string graphVersion, long edgeId);
+
+        /// <summary>
+        /// 获取视频的参数.
+        /// </summary>
+        /// <param name="videoId">视频Id.</param>
+        /// <returns>视频参数.</returns>
+        Task<VideoStatusInfo> GetVideoStatusAsync(long videoId);
     }
 }

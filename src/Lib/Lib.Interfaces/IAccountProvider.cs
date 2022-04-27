@@ -1,5 +1,6 @@
 ﻿// Copyright (c) Richasy. All rights reserved.
 
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Bilibili.App.Interfaces.V1;
 using Richasy.Bili.Models.BiliBili;
@@ -42,6 +43,16 @@ namespace Richasy.Bili.Lib.Interfaces
         /// <param name="offsetId">偏移值Id.</param>
         /// <returns>视频集.</returns>
         Task<UserSpaceVideoSet> GetUserSpaceVideoSetAsync(int userId, string offsetId);
+
+        /// <summary>
+        /// 搜索用户空间的视频.
+        /// </summary>
+        /// <param name="userId">用户Id.</param>
+        /// <param name="keyword">关键词.</param>
+        /// <param name="pageNumber">页码.</param>
+        /// <param name="pageSize">每页容量.</param>
+        /// <returns><see cref="SearchArchiveReply"/>.</returns>
+        Task<SearchArchiveReply> SearchUserSpaceVideoAsync(int userId, string keyword, int pageNumber, int pageSize = 20);
 
         /// <summary>
         /// 关注/取消关注用户.
@@ -95,6 +106,21 @@ namespace Richasy.Bili.Lib.Interfaces
         /// <param name="page">页码（每页上限50个）.</param>
         /// <returns>关注列表.</returns>
         Task<RelatedUserResponse> GetFollowsAsync(int userId, int page);
+
+        /// <summary>
+        /// 获取我的关注分组.
+        /// </summary>
+        /// <returns>分组列表.</returns>
+        Task<List<RelatedTag>> GetMyFollowingTagsAsync();
+
+        /// <summary>
+        /// 获取我的关注分组详情.
+        /// </summary>
+        /// <param name="userId">指定用户的用户Id.</param>
+        /// <param name="tagId">分组Id.</param>
+        /// <param name="page">页码.</param>
+        /// <returns>用户列表.</returns>
+        Task<List<RelatedUser>> GetMyFollowingTagDetailAsync(int userId, int tagId, int page);
 
         /// <summary>
         /// 获取稍后再看列表.
@@ -159,15 +185,17 @@ namespace Richasy.Bili.Lib.Interfaces
         /// 获取追番列表.
         /// </summary>
         /// <param name="pageNumber">页码.</param>
+        /// <param name="status">状态.</param>
         /// <returns>追番列表响应.</returns>
-        Task<PgcFavoriteListResponse> GetFavoriteAnimeListAsync(int pageNumber);
+        Task<PgcFavoriteListResponse> GetFavoriteAnimeListAsync(int pageNumber, int status);
 
         /// <summary>
         /// 获取追剧列表.
         /// </summary>
         /// <param name="pageNumber">页码.</param>
+        /// <param name="status">状态.</param>
         /// <returns>追剧列表响应.</returns>
-        Task<PgcFavoriteListResponse> GetFavoriteCinemaListAsync(int pageNumber);
+        Task<PgcFavoriteListResponse> GetFavoriteCinemaListAsync(int pageNumber, int status);
 
         /// <summary>
         /// 获取收藏文章列表.
@@ -175,6 +203,14 @@ namespace Richasy.Bili.Lib.Interfaces
         /// <param name="pageNumber">页码.</param>
         /// <returns>收藏文章列表响应.</returns>
         Task<ArticleFavoriteListResponse> GetFavortieArticleListAsync(int pageNumber);
+
+        /// <summary>
+        /// 更新收藏的PGC内容状态.
+        /// </summary>
+        /// <param name="seasonId">PGC剧集Id.</param>
+        /// <param name="status">状态代码.</param>
+        /// <returns>是否更新成功.</returns>
+        Task<bool> UpdateFavoritePgcStatusAsync(int seasonId, int status);
 
         /// <summary>
         /// 取消关注收藏夹.

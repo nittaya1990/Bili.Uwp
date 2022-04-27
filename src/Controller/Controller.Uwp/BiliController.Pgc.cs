@@ -3,7 +3,13 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
+using System.Net.Http;
+using System.Text;
 using System.Threading.Tasks;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using Richasy.Bili.Models.App;
 using Richasy.Bili.Models.App.Args;
 using Richasy.Bili.Models.App.Other;
 using Richasy.Bili.Models.BiliBili;
@@ -156,8 +162,10 @@ namespace Richasy.Bili.Controller.Uwp
         /// </summary>
         /// <param name="episodeId">单集Id.</param>
         /// <param name="seasonId">剧集/系列Id.</param>
+        /// <param name="proxy">代理地址.</param>
+        /// <param name="area">地区.</param>
         /// <returns>详细内容.</returns>
-        public async Task<PgcDisplayInformation> GetPgcDisplayInformationAsync(int episodeId = 0, int seasonId = 0)
+        public async Task<PgcDisplayInformation> GetPgcDisplayInformationAsync(int episodeId = 0, int seasonId = 0, string proxy = "", string area = "")
         {
             if (episodeId < 0 || seasonId < 0)
             {
@@ -171,7 +179,7 @@ namespace Richasy.Bili.Controller.Uwp
 
             try
             {
-                return await _pgcProvider.GetDisplayInformationAsync(episodeId, seasonId);
+                return await _pgcProvider.GetDisplayInformationAsync(episodeId, seasonId, proxy, area);
             }
             catch (Exception ex)
             {
@@ -281,6 +289,38 @@ namespace Richasy.Bili.Controller.Uwp
             {
                 _loggerModule.LogError(ex);
                 throw;
+            }
+        }
+
+        /// <summary>
+        /// 从 BiliPlus 获取番剧信息.
+        /// </summary>
+        /// <param name="videoId">视频 Aid.</param>
+        /// <returns><see cref="BiliPlusBangumi"/>.</returns>
+        public async Task<BiliPlusBangumi> GetBiliPlusBangumiAsync(string videoId)
+        {
+            try
+            {
+                var handler = new HttpClientHandler()
+                {
+                    AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate,
+                };
+                using (var client = new HttpClient(handler))
+                {
+                    var url = $"https://www.biliplus.com/api/view?id={videoId}";
+                    var response = await client.GetAsync(url);
+                    response.EnsureSuccessStatusCode();
+                    var bytes = await response.Content.ReadAsByteArrayAsync();
+                    var str = Encoding.UTF8.GetString(bytes);
+                    var jObj = JObject.Parse(str);
+                    var bangumi = jObj["bangumi"].ToString();
+                    return JsonConvert.DeserializeObject<BiliPlusBangumi>(bangumi);
+                }
+            }
+            catch (Exception ex)
+            {
+                _loggerModule.LogError(ex, true);
+                return null;
             }
         }
     }

@@ -27,18 +27,18 @@ namespace Richasy.Bili.Lib.Uwp
             return source.Token;
         }
 
-        private async Task<PlayerInformation> InternalGetDashAsync(string cid, string aid = "", string seasonType = "")
+        private async Task<PlayerInformation> InternalGetDashAsync(string cid, string aid = "", string seasonType = "", string proxy = "", string area = "", string episodeId = "")
         {
             var isPgc = string.IsNullOrEmpty(aid) && !string.IsNullOrEmpty(seasonType);
 
-            var url = isPgc ? ApiConstants.Pgc.PlayInformation : ApiConstants.Video.PlayInformation;
+            var url = isPgc ? ApiConstants.Pgc.PlayInformation(proxy) : ApiConstants.Video.PlayInformation;
 
             var queryParameters = new Dictionary<string, string>
             {
                 { Query.Fnver, "0" },
                 { Query.Cid, cid.ToString() },
                 { Query.Fourk, "1" },
-                { Query.Fnval, "16" },
+                { Query.Fnval, "4048" },
                 { Query.Qn, "64" },
                 { Query.OType, "json" },
             };
@@ -47,6 +47,7 @@ namespace Richasy.Bili.Lib.Uwp
             {
                 queryParameters.Add(Query.Module, "bangumi");
                 queryParameters.Add(Query.SeasonType, seasonType);
+                queryParameters.Add(Query.EpisodeId, episodeId);
             }
             else
             {
@@ -58,7 +59,13 @@ namespace Richasy.Bili.Lib.Uwp
                 queryParameters.Add(Query.MyId, _accountProvider.UserId.ToString());
             }
 
-            var request = await _httpProvider.GetRequestMessageAsync(HttpMethod.Get, url, queryParameters, Models.Enums.RequestClientType.Web);
+            var otherQuery = string.Empty;
+            if (!string.IsNullOrEmpty(area))
+            {
+                otherQuery = $"area={area}";
+            }
+
+            var request = await _httpProvider.GetRequestMessageAsync(HttpMethod.Get, url, queryParameters, Models.Enums.RequestClientType.Web, additionalQuery: otherQuery);
             var response = await _httpProvider.SendAsync(request);
             var data = await _httpProvider.ParseAsync<ServerResponse<PlayerInformation>, ServerResponse2<PlayerInformation>>(response, (str) =>
             {
